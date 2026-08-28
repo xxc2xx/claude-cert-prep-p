@@ -983,6 +983,7 @@
             <option value="__MockB">Mock B (63 Q)</option>
             <option value="__MockC">Mock C (63 Q)</option>
             <option value="__Bonus">Bonus 11 — Objective Drills</option>
+        <option value="__Official">🎯 Official Sample Qs</option>
           </select>
         </div>
       </div>
@@ -2500,6 +2501,64 @@ const QUESTIONS = [
     answer: 0,
     explain: `Use traces to identify and fix the structural root cause instead of relying on retries as the permanent solution. Retries can mitigate transient failure but should not replace root-cause resolution for recurring defects.`,
   },
+  // ── Official Sample Questions from Anthropic CCAR-P Exam Guide v1.0 ──
+  {
+    id: "OFQ001",
+    block: "🎯 Official Sample Questions",
+    topic: "D3 Integration — Least-privilege",
+    domain: "D3",
+    form: "Official",
+    tier: "exam",
+    qtype: "single",
+    difficulty: "Medium",
+    q: "A team exposes a customer-support agent that can read tickets, draft replies, issue refunds, and delete user accounts. Support staff only ever need to read tickets and draft replies. Applying least-privilege principles, which change best reduces risk?",
+    choices: [
+      "Add logging to the refund and delete tools so misuse can be audited later.",
+      "Remove the refund and delete tools from the agent's configuration entirely.",
+      "Keep all tools but add a confirmation prompt before refunds and deletions.",
+      "Replace the agent with a larger model that follows instructions more reliably."
+    ],
+    answer: 1,
+    explain: "<b>B — Remove the tools entirely.</b> Least privilege means eliminating capabilities the role does not require, not monitoring or guarding them. Logging (A) is a detective control — it records misuse after the fact. Confirmation prompts (C) are compensating controls — they slow misuse but leave the capability in place. Model size (D) is unrelated to authorization scope. <i>Official sample question from CCAR-P Exam Guide v1.0.</i>",
+  },
+  {
+    id: "OFQ002",
+    block: "🎯 Official Sample Questions",
+    topic: "D2 Prompting — Prompt caching",
+    domain: "D2",
+    form: "Official",
+    tier: "exam",
+    qtype: "single",
+    difficulty: "Medium",
+    q: "An application sends the same 8,000-token system prompt and policy document on every request, followed by a short, varying user message. Latency and cost are both concerns. Which optimization most directly addresses both?",
+    choices: [
+      "Truncate the policy document to the first 1,000 tokens.",
+      "Switch to the smallest available model regardless of task fit.",
+      "Place the static system prompt and policy before the dynamic content and enable prompt caching.",
+      "Move the policy document into a few-shot example block."
+    ],
+    answer: 2,
+    explain: "<b>C — Stable prefix first + prompt caching.</b> Ordering stable content before variable content and enabling prompt caching lets repeated prefixes be reused across requests, reducing both time-to-first-token and per-request cost without discarding required context. Truncation (A) removes needed policy context. Blind downsizing (B) risks quality without addressing the latency root cause. Moving to few-shot (D) changes document position but does not create a cacheable prefix. <i>Official sample question from CCAR-P Exam Guide v1.0.</i>",
+  },
+  {
+    id: "OFQ003",
+    block: "🎯 Official Sample Questions",
+    topic: "D4 Evaluation — RAG diagnosis",
+    domain: "D4",
+    form: "Official",
+    tier: "exam",
+    qtype: "single",
+    difficulty: "Medium",
+    q: "A RAG system suddenly returns confident but incorrect answers after a document refresh, while latency and model version are unchanged. What is the most likely first place to investigate?",
+    choices: [
+      "The model weights have silently changed.",
+      "The retrieval/indexing step is returning irrelevant or stale chunks.",
+      "The temperature setting is too low.",
+      "The context window has shrunk."
+    ],
+    answer: 1,
+    explain: "<b>B — Retrieval/indexing returning stale or mismatched chunks.</b> Confident-but-wrong answers following a document refresh, with model and latency unchanged, point to retrieval feeding the model poor context — for example a broken re-index or mismatched embeddings. Model weights (A) are unchanged (latency is the same). Temperature (C) affects creativity/variability, not factual accuracy; low temperature would make the model more conservative, not confidently wrong. Context window (D) would cause truncation errors, not confident wrong answers. <i>Official sample question from CCAR-P Exam Guide v1.0.</i>",
+  },
 ];
 
 const STORAGE_KEY = 'claude-cert-p-progress';
@@ -2577,6 +2636,7 @@ function getFiltered() {
       if (block === '__MockB' && q.form !== 'Mock B') return false;
       if (block === '__MockC' && q.form !== 'Mock C') return false;
       if (block === '__Bonus' && q.form !== 'Bonus 11') return false;
+    if (block === '__Official' && q.form !== 'Official') return false;
     }
     const p = progress[q.id];
     if (status === 'unanswered' && p) return false;
@@ -3280,178 +3340,327 @@ function renderProgress() {
 }
 
 // ===== Cheatsheet =====
-const CHEATSHEET_MD = `# CCAR-P — Quick Reference
+const CHEATSHEET_MD = `# CCAR-P — Official Study Guide
+*Based on the official Anthropic Exam Guide v1.0 · Effective July 2026*
 
-## Exam Facts
-- **63 questions** · 120 minutes · Passing = 720/1000 (~46 correct)
-- **Question types:** Single choice (most), Multiple response (select 2), Matching
-- Judgment-based: "what should the architect do?" — not recall
-
-## 7 Domains & Weights
-
-| Domain | Weight | Core Question |
-|--------|--------|--------------|
-| D1 Solution Design | 17% | When to use Claude vs. deterministic code? |
-| D2 Models, Prompting & Context | 13% | Which model/technique for this workload? |
-| D3 Integration & Tool Use | 19% | How to wire Claude into systems safely? |
-| D4 Evaluation, Testing & Optimization | 16% | How do you measure and improve quality? |
-| D5 Governance, Safety & Risk | 14% | How do you manage risk and compliance? |
-| D6 Stakeholder Communication & Lifecycle | 14% | How do you manage deployment lifecycle? |
-| D7 Developer Productivity | 7% | How do you use Claude Code in practice? |
-
-## D1 — Solution Design & Architecture
-
-**When to use Claude:** Language understanding, variable input, intent/nuance needed.  
-**When NOT:** Pure deterministic logic, simple arithmetic, fixed-schema operations — use code.
-
-**Simplest-first principle:** Start with the narrowest Claude solution that solves the funded problem. Don't build a "platform" when a single API call works.
-
-**Feedback loops:** Every production system needs: trace IDs → structured failure labels → regression eval set. Without these, you can't improve.
-
-**Agentic patterns:**
-- Fixed workflow → when steps are known and deterministic
-- Augmented LLM → when retrieval or tools add value without autonomy
-- Agentic loop → when requirements are open-ended or discovery is needed
-
-## D2 — Models, Prompting & Context
-
-**Model selection signals:**
-- High volume / simple → smaller, faster model
-- Complex reasoning / multi-doc synthesis → most capable model
-- Mixed pipeline → route by complexity (small for easy, large for hard)
-
-**Prompt engineering hierarchy:**
-1. Zero-shot clear instruction → simplest
-2. Few-shot examples → when edge cases need grounding
-3. Chain-of-thought / reasoning decomposition → complex multi-step
-
-**Context management:**
-- Separate stable instructions from variable data
-- Cache stable prefix (instructions, persona, tool schemas)
-- Late-bind variable fields to maximize cache hits
-- Never mix secrets into shared templates
-
-## D3 — Integration & Tool Use
-
-**Integration mechanisms:**
-- MCP → standard reusable tool interface, discoverable, version-controlled
-- Direct API/CLI → latency-critical calls with stable proprietary backends
-- Agent-to-agent → only when genuine coordination or isolation needed (adds complexity)
-
-**Tool design principles:**
-- Least privilege: each tool gets minimum permissions required
-- Authorize outside the model: never let Claude self-police permissions
-- Validate outputs before acting on them
-- Propagate end-user identity to downstream tools where appropriate
-
-**RAG design:**
-- Dense (semantic) → paraphrase/concept queries
-- Lexical/keyword → exact codes, IDs
-- Hybrid + reranking → mixed query patterns
-
-**Context windows:** Use lazy loading — load detail only when needed, not all upfront.
-
-## D4 — Evaluation, Testing & Optimization
-
-**Eval types:**
-- Programmatic exact/schema checks → fields with objective correct answers
-- Calibrated human or model rubrics → quality, tone, summary (not binary)
-- NEVER: vague thumbs-up for everything, evaluate only on prompt-writing examples
-
-**A/B testing rules:**
-- Predefine metric + guardrails before starting
-- Randomize comparable traffic
-- Run until statistically meaningful evidence
-- NEVER: stop at first favorable result, change multiple components mid-test
-
-**Performance optimization:**
-- Parallelize independent tool/retrieval calls
-- Route simple cases to faster models, escalate hard cases
-- Remove unnecessary sequential rounds
-- Cache stable prefixes
-
-**Monitoring signals to watch:**
-- Tool failure rate surge
-- Drop in task success on sampled production evals
-- Human review escalation rate
-
-## D5 — Governance, Safety & Risk
-
-**Defense layers (not one-and-done):**
-1. Input screening for adversarial/disallowed content
-2. Tool-level authorization and output validation
-3. Human-in-the-loop for high-stakes or irreversible actions
-
-**Agentic risk:**
-- Larger blast radius → use minimal permissions
-- Irreversible actions → require human approval
-- Prompt injection → validate/sanitize inputs, don't trust content from retrieved documents
-
-**Data governance:**
-- Data residency / retention requirements → architect before building
-- Auditability → log enough to reconstruct decisions
-- Bias → unrepresentative eval sets, systematic reviewer framing
-
-**Human review routing:**
-- Route to human: low confidence score, high-risk characteristics, field-level ambiguity
-- NOT: random 100%, easiest cases only
-
-## D6 — Stakeholder Communication & Lifecycle
-
-**Design decision docs must include:**
-- Decision + context/constraints
-- Alternatives considered and why the chosen trade-off won
-- NOT: "only the final diagram with no rationale"
-
-**Lifecycle phases:**
-- Discovery → clarify process, data owners, success metric
-- Design → compare architectures, define controls
-- Handoff → train operators, document runbooks, transfer ownership
-
-**Post-deployment:**
-- Review outcome metrics AND failure themes on regular cadence
-- Revisit thresholds when production evidence changes
-- NEVER freeze requirements after launch
-
-**Handoff artifact must include:**
-- Versioned prompts/config + eval suite
-- Known failure modes, runbooks, escalation paths
-
-## D7 — Developer Productivity
-
-**Claude Code configuration scope:**
-- Team-wide coding conventions → project/repository shared (CLAUDE.md / .claude/rules/)
-- Personal preferences → user-level (~/.claude/CLAUDE.md)
-- Shared project MCP server → project-scoped .mcp.json (version-controlled)
-
-**Agentic development workflows:**
-- Generate code → run deterministic tests → human review (all three required)
-- Use Claude to summarize failing traces and propose reproducible hypotheses
-- NEVER: auto-merge generated code without checks
-
-**Debugging with Claude:**
-- Provide: prompt/context/tool inputs + versions from failing trace + external service responses
-- NOT: developer's editor theme, social media followers
+## Exam Facts (Official)
+| Field | Detail |
+|-------|--------|
+| Items | **63 questions** |
+| Time | **120 minutes** |
+| Passing | **Scaled 720 / 1,000** (~46+ correct) |
+| Fee | **$175 USD** |
+| Format | Multiple-choice + Multiple-response (each item states how many to select) |
+| Scoring | Criterion-referenced — fixed standard, not curved |
+| Retakes | 14 days after 1st fail · 30 days after 2nd · 90 days after 3rd · max 4/year |
+| Validity | 12 months — renew via free non-proctored assessment |
 
 ---
-## Key CCAR-P Patterns
+
+## Official Blueprint
+
+| Domain | Official Name | Weight | ~Q count |
+|--------|--------------|--------|----------|
+| D1 | Solution Design & Architecture | **17%** | ~11 |
+| D2 | Claude Models, Prompting & Context Engineering | **13%** | ~8 |
+| D3 | Integration | **19%** | ~12 |
+| D4 | Evaluation, Testing & Optimization | **16%** | ~10 |
+| D5 | Governance, Safety & Risk Management | **14%** | ~9 |
+| D6 | Stakeholder Communication & Lifecycle Management | **14%** | ~9 |
+| D7 | Developer Productivity & Operational Enablement | **7%** | ~4 |
+
+---
+
+## D1 — Solution Design & Architecture (17%)
+
+**Official objectives:**
+- Translate business problems into Claude-based AI solutions
+- Design end-to-end architectures (input → processing → output → feedback loops)
+- Select appropriate architectural patterns (workflow, agentic, augmented LLM)
+- Design multi-agent systems and orchestration strategies
+- Apply decomposition techniques for complex problem solving
+- Align solutions to business value pillars (efficiency, transformation, productivity, cost, performance SLAs)
+
+**Key decision criteria for "when to use Claude":**
+The exam uses Anthropic's four properties of generative AI as decision criteria. Claude earns its place when the problem involves variable natural-language input, interpretation of intent/nuance, or context that rules-based logic cannot handle. Avoid inserting Claude into deterministic, fixed-schema, or pure arithmetic workflows.
+
+**Architectural patterns:**
+- **Fixed workflow** → steps are known, deterministic, sequenceable
+- **Augmented LLM** → one prompt + retrieval or calculator tools; no autonomy
+- **Agentic loop** → open-ended, requirements discovered through execution, multi-step
+
+**Simplest-first principle:** Start with the narrowest Claude solution that solves the funded business problem. "Enterprise platform" answers are almost always wrong on this exam.
+
+**Feedback loops are required:** Any production architecture without trace IDs → structured failure labels → regression eval set is architecturally incomplete. The exam will test this.
+
+**Multi-agent design:** Only justified when genuine task isolation or specialization is needed. More agents = more coordination complexity; never add agents just to look "enterprise-ready."
+
+---
+
+## D2 — Claude Models, Prompting & Context Engineering (13%)
+
+**Official objectives:**
+- Select appropriate Claude models based on trade-offs
+- Design system prompts, templates, and guardrails
+- Apply prompt engineering techniques (zero-shot, few-shot, chain-of-thought)
+- Optimize context windows and manage token usage
+- Implement prompt reuse strategies (caching, modular prompts, Skills)
+
+**Model selection signals:**
+| Signal | Strategy |
+|--------|----------|
+| High volume, simple classification | Smallest model meeting the eval target |
+| Complex reasoning, multi-document synthesis | Most capable model where quality changes outcome |
+| Mixed pipeline | Route by complexity — fast model for easy, strong model for hard |
+
+**Prompt engineering hierarchy:**
+1. Zero-shot clear instruction → always try first
+2. Few-shot examples → when edge cases or unusual style need grounding
+3. Chain-of-thought / reasoning prompt → complex multi-step problems
+
+**Prompt caching — Official Sample Question pattern (D2):**
+> "An application sends the same 8,000-token system prompt and policy document on every request, followed by a short varying user message."
+> **Correct answer:** Place static content first + enable prompt caching. This reduces time-to-first-token AND per-request cost by reusing the stable prefix.
+> **Wrong:** Truncate (loses context), blindly downsize model (risks quality), move to few-shot block (does not create cacheable prefix).
+
+**Context management rules:**
+- Separate stable instructions from variable request fields
+- Order: stable prefix (system prompt, policy) → variable content (user message)
+- Never interleave a timestamp into the stable prefix — it breaks caching
+- Lazy loading: fetch additional context only when the agent actually needs it
+
+---
+
+## D3 — Integration (19% — most questions)
+
+**Official objectives:**
+- Evaluate tool/agent configuration for **capability bloat**
+- Analyze authentication and authorization requirements to identify security gaps
+- Evaluate accuracy-latency trade-offs and justify configuration decisions
+- Analyze observability challenges and select monitoring strategies at scale
+- Design a RAG pipeline with appropriate **chunking and indexing strategies**
+- Apply retrieval strategies matched to **data shape and query pattern**
+- Evaluate connection protocols: MCP, API/CLI, agent-to-agent
+- Evaluate **progressive discovery vs. monolithic context** strategy
+
+**Least-privilege — Official Sample Question pattern (D3):**
+> "A support agent can read tickets, draft replies, issue refunds, and delete accounts. Staff only need the first two."
+> **Correct answer:** Remove the refund and delete tools from configuration entirely.
+> **Wrong:** Logging (detective, not preventive), confirmation prompts (compensating, not removal), larger model (irrelevant to authorization scope).
+
+**Integration mechanism selection:**
+| Mechanism | Use when |
+|-----------|----------|
+| **MCP** | Standard reusable tool, discoverable by multiple AI clients, version-controlled |
+| **Direct API/CLI** | Latency-critical calls to stable proprietary backends; MCP overhead unjustified |
+| **Agent-to-agent** | Genuine task isolation, security boundary, or specialization needed; adds complexity — justify it |
+
+**RAG retrieval strategy:**
+| Query type | Retrieval approach |
+|-----------|-------------------|
+| Semantic paraphrase ("What does policy say about X?") | Dense / semantic / vector |
+| Exact codes, IDs, error numbers | Lexical / keyword |
+| Mixed patterns | Hybrid + reranking |
+
+**Chunking and indexing:** Match chunk size to retrieval precision needs. Over-large chunks dilute relevance; over-small chunks lose context. Index must be re-verified after any document refresh.
+
+**Progressive discovery vs. monolithic context:**
+- Monolithic: load all context upfront → simpler but expensive, fills window early
+- Progressive: lazy-load detail only when needed → smaller initial context, better for long tasks
+
+**Authorization:** Propagate end-user identity or delegated scopes to downstream tools. Never use one admin token for all users. Enforce authorization outside the model — never let the model self-police.
+
+**RAG quality diagnosis — Official Sample Question pattern (D4 crossover):**
+> "RAG system returns confident-but-wrong answers after document refresh; model and latency unchanged."
+> **Correct answer:** Retrieval/indexing step returning stale or mismatched chunks (broken re-index, mismatched embeddings).
+> **Wrong:** Model weights changed (unchanged), temperature too low (would cause conservatism not confident errors), context window shrunk (would cause truncation errors).
+
+---
+
+## D4 — Evaluation, Testing & Optimization (16%)
+
+**Official objectives:**
+- Define evaluation metrics (accuracy, latency, cost, safety, security)
+- Design evaluation datasets and test frameworks using **mixed methodologies**
+- Conduct A/B testing and iterative improvements
+- **Diagnose system issues** (prompt failure, hallucinations, model mismatch)
+- Optimize token usage, latency, and cost-performance trade-offs
+- Monitor system performance using logging and observability tools
+
+**Eval methodology choice:**
+| Output type | Method |
+|------------|--------|
+| Fields with objective correct answers | Programmatic exact / schema checks |
+| Quality, tone, summary accuracy | Calibrated human or model-graded rubric |
+| Both in same system | Mixed methodology (official term) |
+
+**Build evals before production:** Evals are acceptance criteria and quality gates, not afterthoughts. Must be in place before model or prompt changes are deployed.
+
+**A/B testing rules:**
+- Predefine primary metric + guardrails before starting
+- Randomize comparable traffic across variants
+- Run until statistically meaningful evidence
+- Change ONE variable at a time
+- **Never:** stop at first favorable result, change multiple components mid-test
+
+**System issue diagnosis:**
+- Prompt failure → confident wrong answers despite correct retrieval → fix prompt/instructions
+- Hallucination / ungrounded generation → confident but fabricated → add grounding/citations
+- Model mismatch → task complexity exceeds model capability → upgrade model
+
+**Performance optimization hierarchy:**
+1. Parallelize independent tool/retrieval calls
+2. Route simple tasks to faster models, escalate complex ones
+3. Remove unnecessary sequential model/tool rounds
+4. Cache stable content prefixes
+
+**Monitoring: what to watch in production:**
+- Sudden rise in tool failure rate
+- Material drop in task success on sampled production evals
+- Human escalation rate rising
+- NOT: model benchmark score (not a production signal), count of prompt tokens (not a quality signal)
+
+---
+
+## D5 — Governance, Safety & Risk Management (14%)
+
+**Official objectives:**
+- Implement guardrails and safety controls
+- Identify risks, limitations, and failure modes of LLM systems
+- Apply human-in-the-loop validation strategies
+- Ensure compliance with regulations (GDPR, HIPAA, FedRAMP)
+- Address ethical AI considerations (bias, fairness, transparency)
+
+**Defense-in-depth — three layers:**
+1. **Input screening** — block adversarial/disallowed content before it reaches the model
+2. **Tool-level authorization and output validation** — enforce at the tool, not in the prompt
+3. **Human-in-the-loop** — required for irreversible actions, high-stakes, low-confidence outputs
+
+**Primary risk taxonomy:**
+| Risk | Scenario | Response |
+|------|----------|----------|
+| Prompt injection | Malicious web page tells agent to upload secrets | Validate/sanitize external content before it enters context |
+| Hallucination | Model invents a policy not present in evidence | Grounding, citation checks, calibrated eval |
+| Data leakage | Customer A's data reaches Customer B | Per-request isolation, RLS, no shared context across users |
+| Irreversible action | Agent executes delete before human review | Require approval before irreversible tool calls |
+
+**Human-in-the-loop routing:** Trigger on low calibrated confidence score OR high-risk document characteristics OR field-level ambiguity. Never route randomly or by "most expensive cases."
+
+**Regulatory compliance considerations:**
+- Data residency/retention requirements → architect before building, not retrofit
+- Auditability → log enough to reconstruct the decision chain
+- GDPR: right to erasure, data minimization — affects what you store in prompts/traces
+- HIPAA: PHI handling — de-identify before storing in logs
+- FedRAMP: US government workloads — specific deployment constraints
+
+**Bias and fairness:**
+- Source: unrepresentative evaluation/training examples OR systematic reviewer framing
+- Fix: fix the data and the framing, not just the threshold
+
+---
+
+## D6 — Stakeholder Communication & Lifecycle Management (14%)
+
+**Official objectives:**
+- Conduct structured discovery and requirement gathering
+- Communicate architectural decisions and trade-offs
+- Manage stakeholder feedback loops and expectation alignment (including SLAs)
+- Document architectures and provide implementation guidance
+- Support lifecycle phases: discovery, design, handoff, monitoring, iteration
+
+**Lifecycle phases and what belongs where:**
+| Phase | Activities |
+|-------|-----------|
+| **Discovery** | Clarify current process, data owners, success metric, assumptions |
+| **Design** | Compare architectures, define controls, document trade-offs + rationale |
+| **Handoff** | Train operating team, transfer ownership, establish runbooks, escalation paths |
+| **Monitoring** | Review outcome metrics AND failure themes on regular cadence |
+| **Iteration** | Revisit thresholds/SLAs when production evidence changes |
+
+**Decision documentation must include:**
+- Decision + context and constraints
+- Alternatives considered and why the chosen trade-off won
+- NOT: "only the final diagram with no rationale," "no alternatives exist"
+
+**Architecture choices trace back to the business case.** The exam tests whether you can frame technical decisions in business-legible terms. "We chose this because the latency constraint was X" beats "we chose this because it was more elegant."
+
+**Handoff artifact checklist:**
+- Versioned prompts/configuration + eval suite
+- Known failure modes and runbooks
+- Ownership and escalation paths
+- NOT: only a high-level diagram, personal notes on one developer's laptop
+
+**Post-launch governance:** Review outcome metrics AND failure themes regularly. Revisit SLAs when production evidence changes. Never freeze requirements post-launch.
+
+**Cross-platform deployment:** Evaluate direct API vs. Bedrock vs. Vertex on latency, compliance, and cost — the right answer depends on regulatory constraints and existing cloud footprint.
+
+---
+
+## D7 — Developer Productivity & Operational Enablement (7%)
+
+**Official objectives:**
+- Configure Claude tools and environments for teams (e.g., Claude Code)
+- Improve developer workflows using AI-assisted tooling
+- Support debugging and operational issue resolution
+
+**Configuration scope:**
+| Scope | Use for |
+|-------|--------|
+| Project/repository (CLAUDE.md, .claude/rules/) | Team-wide coding conventions |
+| User-level (~/.claude/CLAUDE.md) | Personal preferences across projects |
+| Project-scoped .mcp.json | Shared MCP server required by the whole team (version-controlled) |
+
+**Code generation workflow (all three required, no shortcuts):**
+1. Generate candidate output with Claude
+2. Run deterministic tests (CI, schema validation, unit tests)
+3. Human review before merge
+
+**Debugging inputs to provide Claude:**
+- Prompt + context + tool inputs + versions from failing trace
+- Relevant external service responses/errors
+- NOT: developer's editor theme, social media follower count, office temperature
+
+**Shared configuration hygiene:**
+- Secrets NEVER committed to repo
+- Least-privilege permissions centrally defined
+- Security policy is not a suggestion
+
+---
+
+## High-Frequency Exam Patterns
 
 ### "Simplest solution" trap
-The exam often presents an overpowered option (multi-agent platform, most capable model, full autonomy) vs. a narrowly scoped solution. **The scoped solution is almost always correct.**
+The exam almost always presents an overpowered option vs. a scoped solution. **The narrowly scoped solution is correct.** Multi-agent platform, most capable model for everything, full autonomy → almost always wrong.
 
 ### "When NOT to use Claude"
-- Pure deterministic math/logic → use code
-- Fixed-schema operations → use database/API
-- LLM where it doesn't add language value → don't force it
+- Pure deterministic math/logic → use code, not LLM
+- Fixed-schema DB operations → use database, not LLM
+- High-volume, fixed-pattern classification where rules fully capture the logic → rule engine, not LLM
 
-### Feedback loop required
-Any production system without a feedback loop (trace IDs → structured errors → regression set) is architecturally incomplete. This appears in D1, D4, D5.
+### Logging ≠ least privilege
+Logging is a detective control. Removing unnecessary capabilities is a preventive control. The exam treats these as different in kind, not degree. Least privilege = remove, not monitor.
 
-### Human-in-the-loop
-Required when: irreversible actions, high-stakes decisions, low confidence score on calibrated metric, regulated data.
+### Feedback loop completeness test
+Any production system without: **(1) trace IDs** linking inputs, retrievals, tool calls, model output → **(2) structured failure labels** → **(3) persistent regression eval set** is architecturally incomplete. The exam will present this gap as the correct diagnosis.
 
-### Governance is proactive
-Data residency, auditability, bias review — these are architectural decisions, not afterthoughts. Design them in before building.
+### Compliance is proactive
+Data residency, auditability, GDPR/HIPAA requirements — architect them in before building, not as a retrofit. Exam will test whether you make these decisions in design phase, not monitoring phase.
+
+---
+
+## Official Sample Questions (from Exam Guide v1.0)
+
+**S1 · D3 Integration — Least privilege**
+> A team exposes a customer-support agent that can read tickets, draft replies, issue refunds, and delete user accounts. Support staff only ever need to read tickets and draft replies. Which change best reduces risk?
+> **Answer: B — Remove the refund and delete tools from configuration entirely.** Logging (A) and confirmations (C) are detective/compensating controls, not removal. Model size (D) is unrelated to authorization.
+
+**S2 · D2 Prompting — Prompt caching**
+> An application sends the same 8,000-token system prompt and policy document on every request, followed by a short varying user message. Latency and cost are both concerns. Which optimization most directly addresses both?
+> **Answer: C — Place static content first and enable prompt caching.** Truncation (A) loses needed context. Blind downsizing (B) risks quality. Moving to few-shot (D) does not create a cacheable prefix.
+
+**S3 · D4 Evaluation — RAG diagnosis**
+> A RAG system returns confident but incorrect answers after a document refresh; latency and model version are unchanged. What is the most likely first place to investigate?
+> **Answer: B — The retrieval/indexing step is returning irrelevant or stale chunks.** Model weights (A) are unchanged. Temperature (C) would cause conservatism, not confident errors. Context window (D) would cause truncation.
 `;
 
 function renderCheatsheet() {
@@ -3468,98 +3677,166 @@ function renderCheatsheet() {
 // ===== Final Check =====
 function renderFinalCheck() {
   const el = document.getElementById('final-check-body');
-  if (!el || el.dataset.loaded) return;
-  el.dataset.loaded = '1';
+  if (!el || el.dataset.rendered) return;
+  el.dataset.rendered = '1';
   el.innerHTML = `
-<div style="max-width:760px;margin:0 auto;padding:8px 0;font-size:14px;line-height:1.7;">
 
-<div style="background:var(--panel-2);border:2px solid var(--accent);border-radius:10px;padding:16px 20px;margin-bottom:16px;">
-  <div style="font-weight:700;font-size:15px;margin-bottom:8px;color:var(--accent);">🎯 CCAR-P Exam Quick Facts</div>
-  <table style="width:100%;border-collapse:collapse;font-size:13px;">
-    <tr><td style="padding:4px 8px;color:var(--muted)">Questions</td><td style="padding:4px 8px"><b>63</b></td></tr>
-    <tr><td style="padding:4px 8px;color:var(--muted)">Time</td><td style="padding:4px 8px"><b>120 minutes</b></td></tr>
-    <tr><td style="padding:4px 8px;color:var(--muted)">Passing</td><td style="padding:4px 8px"><b>720/1000</b> (~46 correct)</td></tr>
-    <tr><td style="padding:4px 8px;color:var(--muted)">Cost</td><td style="padding:4px 8px"><b>$175</b></td></tr>
-    <tr><td style="padding:4px 8px;color:var(--muted)">Format</td><td style="padding:4px 8px">Single choice + Multiple response + Matching</td></tr>
-    <tr><td style="padding:4px 8px;color:var(--muted)">Style</td><td style="padding:4px 8px">Judgment-based scenarios — "what should the architect do?"</td></tr>
+<div class="fc-section">
+  <h3>Exam Logistics (Official)</h3>
+  <table class="fc-table">
+    <tr><th>Field</th><th>Detail</th></tr>
+    <tr><td>Items</td><td><b>63 questions</b></td></tr>
+    <tr><td>Time</td><td><b>120 minutes</b></td></tr>
+    <tr><td>Passing</td><td><b>720 / 1,000 scaled</b> (~46+ correct)</td></tr>
+    <tr><td>Fee</td><td>$175 USD</td></tr>
+    <tr><td>Retakes</td><td>14 days (1st fail) · 30 days (2nd) · 90 days (3rd) · max 4/year</td></tr>
+    <tr><td>Validity</td><td>12 months — renew via free non-proctored assessment</td></tr>
+    <tr><td>Format</td><td>Multiple-choice + Multiple-response (item states count to select)</td></tr>
+    <tr><td>Scoring</td><td>Criterion-referenced, fixed standard — not curved</td></tr>
   </table>
 </div>
 
-<div style="background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:14px;">
-  <div style="font-weight:700;margin-bottom:10px;">⚡ High-Frequency Traps</div>
-  <table style="width:100%;border-collapse:collapse;font-size:13px;">
-    <tr style="border-bottom:1px solid var(--border)"><th style="padding:6px 8px;text-align:left;color:var(--muted)">Trap</th><th style="padding:6px 8px;text-align:left;color:var(--muted)">Correct Pattern</th></tr>
-    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--red)">"AI agent" for simple task</td><td style="padding:6px 8px">Simplest Claude solution that addresses the language problem</td></tr>
-    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--red)">Use most capable model always</td><td style="padding:6px 8px">Right-size: smallest model meeting eval target for simple work</td></tr>
-    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--red)">Let Claude self-police permissions</td><td style="padding:6px 8px">Authorize outside the model; tool-level enforcement</td></tr>
-    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--red)">Multi-agent for everything</td><td style="padding:6px 8px">Agent-to-agent only when genuine coordination/isolation needed</td></tr>
-    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--red)">Vague thumbs-up metric</td><td style="padding:6px 8px">Programmatic for objective fields; calibrated rubric for quality</td></tr>
-    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--red)">Stop A/B test at first positive</td><td style="padding:6px 8px">Predefine metric, run until statistically meaningful</td></tr>
-    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--red)">Insert LLM into deterministic calc</td><td style="padding:6px 8px">Call the deterministic service; LLM is for language, not math</td></tr>
-    <tr><td style="padding:6px 8px;color:var(--red)">Auto-merge all generated code</td><td style="padding:6px 8px">Generate → deterministic tests → human review (all three)</td></tr>
+<div class="fc-section">
+  <h3>Official Blueprint (Domain Weights)</h3>
+  <table class="fc-table">
+    <tr><th>Domain</th><th>Official Name</th><th>Weight</th><th>~Q</th></tr>
+    <tr><td>D1</td><td>Solution Design &amp; Architecture</td><td>17%</td><td>~11</td></tr>
+    <tr><td>D2</td><td>Claude Models, Prompting &amp; Context Engineering</td><td>13%</td><td>~8</td></tr>
+    <tr><td>D3</td><td>Integration</td><td>19%</td><td>~12</td></tr>
+    <tr><td>D4</td><td>Evaluation, Testing &amp; Optimization</td><td>16%</td><td>~10</td></tr>
+    <tr><td>D5</td><td>Governance, Safety &amp; Risk Management</td><td>14%</td><td>~9</td></tr>
+    <tr><td>D6</td><td>Stakeholder Communication &amp; Lifecycle Management</td><td>14%</td><td>~9</td></tr>
+    <tr><td>D7</td><td>Developer Productivity &amp; Operational Enablement</td><td>7%</td><td>~4</td></tr>
   </table>
 </div>
 
-<div style="background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:14px;">
-  <div style="font-weight:700;margin-bottom:10px;">🏗️ D3 Integration — Most Questions (19%)</div>
-  <ul style="margin:0 0 0 16px;font-size:13px;line-height:1.8">
-    <li><b>MCP</b> = standard, discoverable, version-controlled. Use for reusable tools shared across clients.</li>
-    <li><b>Direct API/CLI</b> = latency-critical calls to stable proprietary backends. Not MCP overhead.</li>
-    <li><b>Agent-to-agent</b> = genuine isolation boundary or coordination need. Adds complexity — justify it.</li>
-    <li><b>RAG retrieval:</b> Dense = semantic/paraphrase · Lexical = exact IDs/codes · Hybrid = mixed patterns</li>
-    <li><b>Lazy loading:</b> Fetch detail only when the agent needs it, not up front.</li>
-    <li><b>Authorization:</b> Propagate end-user identity to downstream tools. Never one admin token.</li>
+<div class="fc-section">
+  <h3>Official Sample Questions — Know These Cold</h3>
+  <div style="border-left:4px solid #f59e0b;padding:12px;margin-bottom:14px;background:#fefce8">
+    <b>S1 · D3 Integration — Least Privilege</b><br>
+    A team exposes a customer-support agent that can read tickets, draft replies, issue refunds, and delete user accounts.
+    Support staff only ever need to read tickets and draft replies. Which change best reduces risk?<br><br>
+    <span style="color:#16a34a"><b>✓ Answer B:</b> Remove the refund and delete tools from configuration entirely.</span><br>
+    <i>Rationale: Least privilege = remove unnecessary capabilities (preventive), not log them (detective) or add confirmation prompts (compensating). Model size is irrelevant to authorization scope.</i>
+  </div>
+  <div style="border-left:4px solid #f59e0b;padding:12px;margin-bottom:14px;background:#fefce8">
+    <b>S2 · D2 Prompting — Prompt Caching</b><br>
+    An app sends the same 8,000-token system prompt and policy document on every request, followed by a short varying user message.
+    Latency and cost are concerns. Which optimization addresses both?<br><br>
+    <span style="color:#16a34a"><b>✓ Answer C:</b> Place the static system prompt and policy before dynamic content and enable prompt caching.</span><br>
+    <i>Rationale: Stable prefix first + caching reuses the prefix, reducing TTFT and per-request cost. Truncation loses context. Blind downsizing risks quality. Moving to few-shot does not create a cacheable prefix.</i>
+  </div>
+  <div style="border-left:4px solid #f59e0b;padding:12px;margin-bottom:14px;background:#fefce8">
+    <b>S3 · D4 Evaluation — RAG Diagnosis</b><br>
+    A RAG system returns confident but incorrect answers after a document refresh. Latency and model version are unchanged.
+    What is the most likely first place to investigate?<br><br>
+    <span style="color:#16a34a"><b>✓ Answer B:</b> The retrieval/indexing step is returning irrelevant or stale chunks.</span><br>
+    <i>Rationale: Confident-but-wrong after document refresh + unchanged model/latency = broken re-index or mismatched embeddings. Model weights (A), temperature (C), context window shrinkage (D) all ruled out by unchanged latency and model version.</i>
+  </div>
+</div>
+
+<div class="fc-section">
+  <h3>Self-Assessment — Official Objectives Checklist</h3>
+  <p style="color:#6b7280;font-size:0.85em">Tick each when you can answer exam questions on it without hesitation.</p>
+
+  <b>D1 — Solution Design &amp; Architecture (17%)</b>
+  <ul style="margin-bottom:14px">
+    <li>[ ] Translate business problems into Claude-based AI solutions</li>
+    <li>[ ] Design end-to-end architectures (input → processing → output → feedback loops)</li>
+    <li>[ ] Select appropriate architectural patterns: workflow vs. agentic vs. augmented LLM</li>
+    <li>[ ] Design multi-agent systems and orchestration strategies</li>
+    <li>[ ] Apply decomposition techniques for complex problem solving</li>
+    <li>[ ] Align solutions to business value pillars (efficiency, transformation, productivity, cost, performance SLAs)</li>
+  </ul>
+
+  <b>D2 — Claude Models, Prompting &amp; Context Engineering (13%)</b>
+  <ul style="margin-bottom:14px">
+    <li>[ ] Select appropriate Claude models based on trade-offs</li>
+    <li>[ ] Design system prompts, templates, and guardrails</li>
+    <li>[ ] Apply prompt engineering techniques (zero-shot, few-shot, chain-of-thought)</li>
+    <li>[ ] Optimize context windows and manage token usage</li>
+    <li>[ ] Implement prompt reuse strategies (caching, modular prompts, Skills)</li>
+  </ul>
+
+  <b>D3 — Integration (19% — most questions)</b>
+  <ul style="margin-bottom:14px">
+    <li>[ ] Evaluate tool/agent configuration for capability bloat</li>
+    <li>[ ] Analyze authentication and authorization requirements to identify security gaps</li>
+    <li>[ ] Evaluate accuracy-latency trade-offs and justify configuration decisions</li>
+    <li>[ ] Analyze observability challenges and select monitoring strategies at scale</li>
+    <li>[ ] Design a RAG pipeline with appropriate chunking and indexing strategies</li>
+    <li>[ ] Apply retrieval strategies matched to data shape and query pattern</li>
+    <li>[ ] Evaluate connection protocols: MCP, API/CLI, agent-to-agent</li>
+    <li>[ ] Evaluate progressive discovery vs. monolithic context strategy</li>
+  </ul>
+
+  <b>D4 — Evaluation, Testing &amp; Optimization (16%)</b>
+  <ul style="margin-bottom:14px">
+    <li>[ ] Define evaluation metrics (accuracy, latency, cost, safety, security)</li>
+    <li>[ ] Design evaluation datasets and test frameworks using mixed methodologies</li>
+    <li>[ ] Conduct A/B testing and iterative improvements</li>
+    <li>[ ] Diagnose system issues (prompt failure, hallucinations, model mismatch)</li>
+    <li>[ ] Optimize token usage, latency, and cost-performance trade-offs</li>
+    <li>[ ] Monitor system performance using logging and observability tools</li>
+  </ul>
+
+  <b>D5 — Governance, Safety &amp; Risk Management (14%)</b>
+  <ul style="margin-bottom:14px">
+    <li>[ ] Implement guardrails and safety controls</li>
+    <li>[ ] Identify risks, limitations, and failure modes of LLM systems</li>
+    <li>[ ] Apply human-in-the-loop validation strategies</li>
+    <li>[ ] Ensure compliance with regulations (GDPR, HIPAA, FedRAMP)</li>
+    <li>[ ] Address ethical AI considerations (bias, fairness, transparency)</li>
+  </ul>
+
+  <b>D6 — Stakeholder Communication &amp; Lifecycle Management (14%)</b>
+  <ul style="margin-bottom:14px">
+    <li>[ ] Conduct structured discovery and requirement gathering</li>
+    <li>[ ] Communicate architectural decisions and trade-offs</li>
+    <li>[ ] Manage stakeholder feedback loops and expectation alignment (including SLAs)</li>
+    <li>[ ] Document architectures and provide implementation guidance</li>
+    <li>[ ] Support lifecycle phases (discovery, design, handoff, monitoring, iteration)</li>
+  </ul>
+
+  <b>D7 — Developer Productivity &amp; Operational Enablement (7%)</b>
+  <ul style="margin-bottom:14px">
+    <li>[ ] Configure Claude tools and environments for teams (e.g., Claude Code)</li>
+    <li>[ ] Improve developer workflows using AI-assisted tooling</li>
+    <li>[ ] Support debugging and operational issue resolution</li>
   </ul>
 </div>
 
-<div style="background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:14px;">
-  <div style="font-weight:700;margin-bottom:10px;">📊 D4 Evaluation — Second-highest (16%)</div>
-  <ul style="margin:0 0 0 16px;font-size:13px;line-height:1.8">
-    <li><b>Objective fields</b> → programmatic exact/schema checks. Not a rubric.</li>
-    <li><b>Quality/summary</b> → calibrated human or model rubric. Not thumbs-up.</li>
-    <li><b>Human review routing</b>: trigger on low confidence score OR high-risk characteristics — not randomly.</li>
-    <li><b>Optimization first steps</b>: parallelize independent calls, route by difficulty, remove needless sequential rounds.</li>
-    <li><b>Monitor in prod</b>: tool failure rate, task success on sampled evals (not just benchmark scores).</li>
-    <li><b>A/B test discipline</b>: predefine metric + guardrails; don't stop early; one change at a time.</li>
-  </ul>
+<div class="fc-section">
+  <h3>High-Frequency Traps</h3>
+  <table class="fc-table">
+    <tr><th>Trap</th><th>Correct position</th></tr>
+    <tr><td>Logging = least privilege</td><td>❌ Logging is detective. Least privilege = <b>remove the capability</b>.</td></tr>
+    <tr><td>Prompt caching — put dynamic content first</td><td>❌ Stable prefix must come <b>first</b>. Dynamic tail last.</td></tr>
+    <tr><td>Confident-wrong after doc refresh = model failure</td><td>❌ First check <b>retrieval/indexing</b> — broken re-index returns stale chunks.</td></tr>
+    <tr><td>Use multi-agent for all complex tasks</td><td>❌ Only when genuine isolation/specialization needed. Adds coordination cost.</td></tr>
+    <tr><td>Embed Claude into pure deterministic logic</td><td>❌ Deterministic workflows don't need an LLM — use code.</td></tr>
+    <tr><td>Data residency is a post-launch concern</td><td>❌ GDPR/HIPAA/FedRAMP compliance is a <b>design-phase</b> decision.</td></tr>
+    <tr><td>The most capable model everywhere</td><td>❌ Match model to task complexity — route simple tasks to faster models.</td></tr>
+    <tr><td>Temperature too low → confident-wrong answers</td><td>❌ Temperature affects creativity/variability, not factual grounding.</td></tr>
+    <tr><td>Evaluation after production</td><td>❌ Evals are acceptance criteria — build them <b>before</b> deploying.</td></tr>
+    <tr><td>Progressive discovery = just-in-time reasoning</td><td>Correct — lazy-load detail only when the agent actually needs it.</td></tr>
+  </table>
 </div>
 
-<div style="background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:14px;">
-  <div style="font-weight:700;margin-bottom:10px;">🛡️ D5 Governance — Risk Scenarios</div>
-  <ul style="margin:0 0 0 16px;font-size:13px;line-height:1.8">
-    <li><b>Prompt injection</b> = malicious instructions in retrieved/external content → validate + sanitize inputs</li>
-    <li><b>Hallucination/ungrounded</b> = confident invention of facts not in evidence → grounding + citation checks</li>
-    <li><b>Data leakage</b> = customer A data reaching customer B → isolation boundaries + per-request context</li>
-    <li><b>Irreversible actions</b> → require human approval before execution, not after</li>
-    <li><b>Bias</b> = unrepresentative evals OR systematic reviewer framing → fix the data, not the threshold</li>
-  </ul>
-</div>
-
-<div style="background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:14px;">
-  <div style="font-weight:700;margin-bottom:10px;">🤝 D6 Stakeholder Patterns</div>
-  <ul style="margin:0 0 0 16px;font-size:13px;line-height:1.8">
-    <li><b>Discovery phase</b>: clarify current process, data owners, success metric. NOT architecture selection.</li>
-    <li><b>Design phase</b>: compare architectures, define controls. NOT training users.</li>
-    <li><b>Handoff phase</b>: train operating team, transfer ownership, establish runbooks.</li>
-    <li><b>Post-launch docs</b> must include: versioned config + eval suite + failure modes + escalation paths.</li>
-    <li><b>Design decisions</b>: document alternatives considered + why chosen trade-off won. Never "no alternatives exist."</li>
-    <li><b>Ongoing governance</b>: review outcomes + failure themes regularly. Revisit SLAs when evidence changes.</li>
-  </ul>
-</div>
-
-<div style="background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;">
-  <div style="font-weight:700;margin-bottom:10px;">⚡ D7 Dev Productivity — Small but specific</div>
-  <ul style="margin:0 0 0 16px;font-size:13px;line-height:1.8">
-    <li><b>Config scope hierarchy</b>: personal preference → user-level · team conventions → project/repo · shared MCP → project .mcp.json</li>
-    <li><b>Code generation workflow</b>: Generate → run deterministic tests → human review (all three, no shortcuts)</li>
-    <li><b>Debugging inputs</b>: prompt + context + tool inputs + versions + external service errors. Not editor themes.</li>
-    <li><b>Shared config</b>: version-controlled, least-privilege defaults. Secrets NEVER committed to repo.</li>
-  </ul>
+<div class="fc-section">
+  <h3>Prep Course Structure (5 Modules)</h3>
+  <table class="fc-table">
+    <tr><th>Module</th><th>Topic</th><th>Duration</th></tr>
+    <tr><td>1</td><td>Claude Platform &amp; Solution Design</td><td>238 min</td></tr>
+    <tr><td>2</td><td>Enterprise Integration &amp; Production</td><td>158 min</td></tr>
+    <tr><td>3</td><td>Responsible AI, Safety &amp; Risk for Architects</td><td>114 min</td></tr>
+    <tr><td>4</td><td>Stakeholder Engagement, Lifecycle &amp; GTM</td><td>178 min</td></tr>
+    <tr><td>5</td><td>Team Enablement &amp; Operational Productivity</td><td>45 min</td></tr>
+  </table>
 </div>
 
 </div>`;
 }
-
 // ===== Init =====
 renderCheatsheet();
 render();
