@@ -3933,6 +3933,79 @@ Data residency, auditability, GDPR/HIPAA requirements — architect them in befo
 
 ---
 
+## Official Prep Course — Full Lesson Breakdown
+
+*Sourced directly from Skilljar after login — these are the exact lesson titles and focus areas*
+
+### M1 · Claude Platform & Solution Design (D1 + D2 · 238 min · 12 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **How Claude Behaves** | 1 | Stateless API, no persistent memory by default, token-in/token-out |
+| 03 | **Platform Map & Primitives** | 4 | API vs. claude.ai vs. operators; system prompt, human turn, assistant turn |
+| 04 | **Decomposition** | 4 | What Claude owns vs. deterministic code; don't LLM what rules can decide |
+| 05 | **Pattern Selection** | 5 | Augmented LLM / Fixed workflow / Agentic loop / Multi-agent — pick by complexity |
+| 06 | **Reference Architectures** | 3 | Which architecture for which scenario — the most-tested D1 decision |
+| 07 | **RAG Pipeline Design** | 2 | Chunking, retrieval, reranking, index versioning, stale-index failure modes |
+| 08 | **Model & Context Strategy** | 3 | Model tiers, fast vs. strong routing, context window planning, caching |
+| 09 | **Prompting as Architecture** | 4 | System prompt structure, role, rules, output format as design decisions |
+| 10 | **Entry Points & Governance** | 3 | claude.ai / API / operators / MCP — entry point determines trust boundary |
+| 11 | Assembly & Recap | 3 | End-to-end walkthrough combining all four design decisions |
+| 12 | Module Complete | 1 | — |
+
+### M2 · Enterprise Integration & Production (D3 + D4 · 158 min · 8 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Evals** | 3 | Eval types: functional / LLM-as-judge / human; evals as release gates |
+| 03 | **POC to Prod** | 3 | Production checklist: traceability, versioning, fallbacks, monitoring |
+| 04 | **Sizing** | 3 | Cost/latency budget: model selection, token limits, caching economics |
+| 05 | **Integration** | 3 | Direct API vs. MCP vs. SDK; tool design, least-privilege tool exposure |
+| 06 | **A/B & Obs** | 3 | A/B testing prompt/model changes; observability: trace IDs, structured logs |
+| 07 | Exercise: Eval Framework | 1 | Applied exercise |
+| 08 | Wrap-up | 4 | Synthesis |
+
+### M3 · Responsible AI, Safety & Risk for Architects (D5 · 114 min · 8 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Alignment** | 3 | Constitutional AI, RLHF, why Claude refuses — not a prompt issue |
+| 03 | **Guardrails** | 5 | Input screening → output screening → tool-call authorization; fail-closed |
+| 04 | **Fairness** | 3 | Subgroup error rates, calibration, disparate impact detection |
+| 05 | **Review routing** | 3 | Route by: confidence, reversibility, cost, impact — not by volume alone |
+| 06 | **Compliance** | 3 | Data residency, GDPR/HIPAA, retention, audit trail — design-phase decisions |
+| 07 | Wrap-up | 4 | Synthesis |
+| 08 | Module Complete | 0 | — |
+
+### M4 · Stakeholder Engagement, Lifecycle & GTM (D6 · 178 min · 8 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Discovery** | 3 | Structured discovery: current workflow, pain, users, baseline, success criteria |
+| 03 | **Tradeoffs** | 3 | Present trade-offs non-technical stakeholders can act on; decision framing |
+| 04 | **Feedback Loops** | 3 | Structured feedback path: reviewer overrides → structured labels → eval set |
+| 05 | **Documentation** | 3 | Handoff docs that survive your absence: runbook, rationale, contact map |
+| 06 | **Entry Point** | 3 | GTM sequencing: pilot → measured rollout → production; who approves each gate |
+| 07 | Wrap-up | 4 | Synthesis |
+| 08 | Module Complete | 0 | — |
+
+### M5 · Team Enablement & Operational Productivity (D7 · 45 min · 6 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Team Setup** | 2 | Shared config, API key management, role-based access, onboarding |
+| 03 | **Dev Workflows** | 2 | Claude Code in practice, prompt iteration loops, code review integration |
+| 04 | **Ops Support** | 1 | Issue triage, escalation path, when to page vs. self-resolve |
+| 05 | Wrap-up | 3 | Synthesis |
+| 06 | Module Complete | 1 | — |
+
+---
+
 ## Official Learning Outcomes (what the exam measures)
 
 By exam time you must be able to:
