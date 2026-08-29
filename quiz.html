@@ -4017,6 +4017,78 @@ By exam time you must be able to:
 - **Governance routing** — Route decisions by confidence, reversibility, cost; map each compliance obligation to a named control + owner + evidence artifact
 - **Stakeholder communication** — Run structured discovery; present trade-offs non-technical stakeholders can act on; design a handoff that survives your absence
 - **Team enablement** — Enable a team to adopt and operate a live system: shared config, rollout, developer workflows, issue resolution without depending on you
+
+---
+
+## Official Prep Course — Module Key Takeaways
+
+*Sourced directly from each module's Recap screen — exact exam-tested rules*
+
+### M1 — Claude Platform & Solution Design (D1 + D2)
+
+**01 Decomposition comes before architecture.** Split work into three buckets: what Claude handles, what existing systems handle, what humans handle. The split is driven by how the model behaves on each piece. Designs that skip this step force Claude into work another system would do at lower cost.
+
+**02 Choosing a pattern = choosing autonomy.** Augmented LLM → workflow → agent is a spectrum from "Claude assists one step" to "Claude plans the whole sequence." Decision factors: predictability, error cost, reversibility, latency tolerance, context availability.
+
+**03 Don't use retrieval as a substitute for live state.** Retrieval is built for static documents and stale snapshots — not for conversations that need live data. Most common mistake: retrieval index used where a live API call was needed.
+
+**04 Start with Sonnet; treat every model swap as a release.** Define what "better" means with an eval set before the swap, and set rollback criteria before — not after. Progressive context (model receives only what it needs at each step) outperforms monolithic context at scale.
+
+**05 Pick entry point by the work it has to do, not what's already on the shelf.** claude.ai / API / operators / MCP each define a different trust boundary. The entry point determines who can see and override the system prompt, which determines the governance posture.
+
+---
+
+### M2 — Enterprise Integration & Production (D3 + D4)
+
+**01 Evals as acceptance criteria.** Write the eval suite before the production code. Keep the golden dataset current with every system change. Use the eval as the gate for every model swap or prompt revision — not just at launch.
+
+**02 POC → production.** Estimate cost and latency at production volume before committing to architecture. Build retries, fallback chains, and circuit breakers into the initial design. Name the failure mode specific to your architecture type and document the mitigation.
+
+**03 Use-case sizing and feasibility.** Run every new use case through the four AI properties before issuing a feasibility verdict. State the verdict in exactly one of three forms: *feasible as scoped* / *feasible with constraints* / *not feasible*. Document the load-bearing boundary condition for every constrained verdict.
+
+**04 Enterprise integration patterns.** Enforce identity at the server side. Pass only the minimum necessary data into the context window. Build observability instrumentation into the integration layer from day one — not as a retrofit.
+
+**05 A/B testing and observability.** Identify the primary metric and sample size before running any experiment. At scale, separate per-request observability from aggregate dashboards. Build a translation layer that maps technical metrics (latency, error rate) to business metrics the stakeholder cares about.
+
+---
+
+### M3 — Responsible AI, Safety & Risk (D5)
+
+**01 Safety is a stack of layers, not a setting.** Training reduces broad harm for every request but never saw your partner's domain policy, data rules, or authorization model — draw the boundary explicitly and identify what each layer covers. The dangerous failure is *silent*: assuming Claude enforces a rule that doesn't live in any layer.
+
+**02 A guarded path has three control points and a chosen failure direction.** Input screening, output screening, and tool-call authorization answer different questions — only one filter at the end does not cover the other two. Let control errors fail **closed** (not open) for decisions where a wrong pass causes harm.
+
+**03 Fairness and transparency are instrumented, not assumed.** Unequal outcomes arise at points you control: corpus composition, prompt framing, examples, routing logic. Treating fairness as a post-hoc audit misses where you can actually intervene.
+
+**04 Route review by stakes, not by volume.** Confidence, reversibility, and cost of a wrong answer determine which decisions a person should review. Send high-stakes, low-confidence decisions to a human with the inputs and the flag reason. Routing everything floods the queue until reviewers click through without reading.
+
+**05 A compliant entry point is a prerequisite; an evidenced control set is the proof.** A regulation states an outcome and leaves you the control — turn each obligation into a named control with an owner, a measurement method, and an evidence artifact. An auditable trail requires both the control and the proof it ran.
+
+---
+
+### M4 — Stakeholder Engagement, Lifecycle & GTM (D6)
+
+**01 Structured discovery.** Run discovery as a four-category process: what the system *must do*, what it *must not do*, what it *must cost*, and *when* it must deliver. Translate every stakeholder preference into a constraint. Write each item as a requirement row with its assumption labeled — so the design traces to the business case, not to your own technical preference.
+
+**02 Communicating tradeoffs.** Present every tradeoff as a package with three elements: the options considered, the criteria you weighed them against, your recommendation — and the *reversal cost* if the decision is undone. The stakeholder is accepting a decision they will have to defend to their own leadership.
+
+**03 Feedback loops and SLA management.** Build the decision layer that maps signals → trigger actions → owners. Set SLA thresholds from their real sources (not from what the dashboard makes easy to export). Wire regulated checkpoints to run on a schedule — compliance checkpoints that aren't wired to a trigger can run for weeks undetected.
+
+**04 Documentation for handoff and audit.** Write the decision, the rejected alternatives, and the tradeoff each resolved *while you still hold the reasoning*. Carry the control register forward as evidence a reviewer will accept. A design without its rationale cannot be safely changed.
+
+**05 Entry point selection and outcomes.** Choose the route on latency, compliance, and cost. For multi-entry-point designs, build an entry-point-responsibility map. Capture the *before* metric, the auditable control, and the reuse note — so the outcome document can justify expansion to a CFO's first question.
+
+---
+
+### M5 — Team Enablement & Operational Productivity (D7)
+
+**01 Team setup is shared configuration, distribution, and spend posture — decided up front.** Org-provisioned Skills for everyone; plugins for group/org targeting with versioned updates and rollback; project Skills for one team; API Skills for programmatic reuse — all bounded by model and budget guardrails set at provisioning time.
+
+**02 Adoption is engineered through champions and batches.** A champion per team proves the workflow and seeds adoption. Access without enablement stalls at basic chat. Lumpy adoption never standardizes the productivity gain.
+
+**03 Diligence keeps AI-assisted work trustworthy.** Hold AI-generated code to correctness, security, and maintainability standards. Require that the author can explain what shipped — captured as a verification checklist that gates work before production. "It passed tests" is not sufficient if the author cannot explain the logic.
+
+**04 Operational support = translation + self-sufficiency.** Connect symptoms to architecture so teams understand *why* something broke (translation). Build toward the team being able to diagnose and resolve without the architect — a deployment that requires you to fix every issue hasn't been fully handed over.
 `;
 
 function mdToHtml(md) {
