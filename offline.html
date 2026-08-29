@@ -911,7 +911,25 @@
     border-color: var(--red);
   }
 
-</style>
+
+    .cs-table { width:100%; border-collapse:collapse; margin:10px 0 14px; font-size:0.85em; }
+    .cs-table th { background:#2a3a5c; color:#e2e8f0; padding:6px 10px; text-align:left; border:1px solid #334155; }
+    .cs-table td { padding:5px 10px; border:1px solid #334155; color:#cbd5e1; vertical-align:top; }
+    .cs-table tr:nth-child(even) td { background:#1e2a3a; }
+    #cheatsheet-body h1 { font-size:1.2em; color:#f59e0b; margin:18px 0 6px; }
+    #cheatsheet-body h2 { font-size:1.05em; color:#7dd3fc; margin:16px 0 4px; border-bottom:1px solid #334155; padding-bottom:4px; }
+    #cheatsheet-body h3 { font-size:0.95em; color:#86efac; margin:12px 0 3px; }
+    #cheatsheet-body p  { color:#cbd5e1; margin:3px 0; font-size:0.87em; line-height:1.55; }
+    #cheatsheet-body hr { border:none; border-top:1px solid #334155; margin:12px 0; }
+    #cheatsheet-body ul { padding-left:18px; margin:4px 0 8px; }
+    #cheatsheet-body li { color:#cbd5e1; font-size:0.87em; margin:2px 0; }
+    #cheatsheet-body li.cb { list-style:none; margin-left:-4px; }
+    #cheatsheet-body li.cb::before { content:'☐ '; }
+    #cheatsheet-body strong { color:#fde68a; }
+    #cheatsheet-body em { color:#a5b4fc; font-style:italic; }
+    #cheatsheet-body code { background:#1e293b; color:#f472b6; padding:1px 4px; border-radius:3px; font-size:0.85em; }
+    #cheatsheet-body br { display:block; margin:4px 0; }
+  </style>
 </head>
 <body>
 <header>
@@ -3868,15 +3886,58 @@ Data residency, auditability, GDPR/HIPAA requirements — architect them in befo
 > **Answer: B — The retrieval/indexing step is returning irrelevant or stale chunks.** Model weights (A) are unchanged. Temperature (C) would cause conservatism, not confident errors. Context window (D) would cause truncation.
 `;
 
+function mdToHtml(md) {
+  const inline = t => t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*([^*\n]+)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>');
+  const lines = md.split('\n');
+  let out = '', inUl = false, inTbl = false, tblFirst = true;
+  const closeUl  = () => { if (inUl)  { out += '</ul>';                   inUl  = false; } };
+  const closeTbl = () => { if (inTbl) { out += '</tbody></table>';         inTbl = false; } };
+  for (const raw of lines) {
+    const line = raw;
+    // headings
+    if (/^### /.test(line)) { closeUl(); closeTbl(); out += `<h3>${inline(line.slice(4))}</h3>`; continue; }
+    if (/^## /.test(line))  { closeUl(); closeTbl(); out += `<h2>${inline(line.slice(3))}</h2>`; continue; }
+    if (/^# /.test(line))   { closeUl(); closeTbl(); out += `<h1>${inline(line.slice(2))}</h1>`; continue; }
+    // hr
+    if (/^---+$/.test(line.trim())) { closeUl(); closeTbl(); out += '<hr>'; continue; }
+    // table
+    if (/^\|/.test(line.trim())) {
+      closeUl();
+      const cells = line.trim().split('|').slice(1,-1);
+      if (!inTbl) {
+        out += '<table class="cs-table"><thead><tr>';
+        cells.forEach(c => out += `<th>${inline(c.trim())}</th>`);
+        out += '</tr></thead><tbody>'; inTbl = true; tblFirst = true; continue;
+      }
+      if (cells.every(c => /^[-: ]+$/.test(c))) continue; // separator
+      out += '<tr>'; cells.forEach(c => out += `<td>${inline(c.trim())}</td>`); out += '</tr>';
+      continue;
+    }
+    if (inTbl) closeTbl();
+    // list
+    if (/^(\s*[-*]) /.test(line)) {
+      if (!inUl) { out += '<ul>'; inUl = true; }
+      const text = line.replace(/^\s*[-*]\s*/,'');
+      if (text.startsWith('[ ] ')) out += `<li class="cb">${inline(text.slice(4))}</li>`;
+      else out += `<li>${inline(text)}</li>`;
+      continue;
+    }
+    if (inUl && line.trim()==='') { closeUl(); out += '<br>'; continue; }
+    if (line.trim()==='') { out += '<br>'; continue; }
+    if (!inUl && !inTbl) out += `<p>${inline(line)}</p>`;
+  }
+  closeUl(); closeTbl();
+  return out;
+}
 function renderCheatsheet() {
   const el = document.getElementById('cheatsheet-body');
   if (!el || el.dataset.loaded) return;
   el.dataset.loaded = '1';
-  if (typeof marked !== 'undefined') {
-    el.innerHTML = marked.parse(CHEATSHEET_MD);
-  } else {
-    el.innerHTML = '<pre style="font-size:13px;white-space:pre-wrap">' + CHEATSHEET_MD.replace(/</g,'&lt;') + '</pre>';
-  }
+  el.innerHTML = mdToHtml(CHEATSHEET_MD);
 }
 
 // ===== Final Check =====
@@ -3917,21 +3978,21 @@ function renderFinalCheck() {
 
 <div class="fc-section">
   <h3>Official Sample Questions — Know These Cold</h3>
-  <div style="border-left:4px solid #f59e0b;padding:12px;margin-bottom:14px;background:#fefce8">
+  <div style="border-left:4px solid #d97706;padding:14px 16px;margin-bottom:16px;background:#1e1a0e;color:#e8e0c8;border-radius:6px">
     <b>S1 · D3 Integration — Least Privilege</b><br>
     A team exposes a customer-support agent that can read tickets, draft replies, issue refunds, and delete user accounts.
     Support staff only ever need to read tickets and draft replies. Which change best reduces risk?<br><br>
     <span style="color:#16a34a"><b>✓ Answer B:</b> Remove the refund and delete tools from configuration entirely.</span><br>
     <i>Rationale: Least privilege = remove unnecessary capabilities (preventive), not log them (detective) or add confirmation prompts (compensating). Model size is irrelevant to authorization scope.</i>
   </div>
-  <div style="border-left:4px solid #f59e0b;padding:12px;margin-bottom:14px;background:#fefce8">
+  <div style="border-left:4px solid #d97706;padding:14px 16px;margin-bottom:16px;background:#1e1a0e;color:#e8e0c8;border-radius:6px">
     <b>S2 · D2 Prompting — Prompt Caching</b><br>
     An app sends the same 8,000-token system prompt and policy document on every request, followed by a short varying user message.
     Latency and cost are concerns. Which optimization addresses both?<br><br>
     <span style="color:#16a34a"><b>✓ Answer C:</b> Place the static system prompt and policy before dynamic content and enable prompt caching.</span><br>
     <i>Rationale: Stable prefix first + caching reuses the prefix, reducing TTFT and per-request cost. Truncation loses context. Blind downsizing risks quality. Moving to few-shot does not create a cacheable prefix.</i>
   </div>
-  <div style="border-left:4px solid #f59e0b;padding:12px;margin-bottom:14px;background:#fefce8">
+  <div style="border-left:4px solid #d97706;padding:14px 16px;margin-bottom:16px;background:#1e1a0e;color:#e8e0c8;border-radius:6px">
     <b>S3 · D4 Evaluation — RAG Diagnosis</b><br>
     A RAG system returns confident but incorrect answers after a document refresh. Latency and model version are unchanged.
     What is the most likely first place to investigate?<br><br>
