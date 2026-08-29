@@ -3884,6 +3884,36 @@ Data residency, auditability, GDPR/HIPAA requirements — architect them in befo
 **S3 · D4 Evaluation — RAG diagnosis**
 > A RAG system returns confident but incorrect answers after a document refresh; latency and model version are unchanged. What is the most likely first place to investigate?
 > **Answer: B — The retrieval/indexing step is returning irrelevant or stale chunks.** Model weights (A) are unchanged. Temperature (C) would cause conservatism, not confident errors. Context window (D) would cause truncation.
+
+---
+
+## Official Prep Course — Module Map
+
+*5 modules · 733 min total · directly maps to exam domains*
+
+| Module | Duration | What you learn | Domains |
+|--------|----------|----------------|---------|
+| Claude Platform & Solution Design | 238 min | Architecture, model selection, context strategy, entry points — translate ambiguous problem → defensible solution | D1, D2 |
+| Enterprise Integration & Production | 158 min | PoC → production: cost, latency, reliability budgets + enterprise integration patterns | D3, D4 |
+| Responsible AI, Safety & Risk for Architects | 114 min | Full safety stack: input screening, output screening, tool-call authorization, fail-closed design | D5 |
+| Stakeholder Engagement, Lifecycle & GTM | 178 min | Discovery, trade-off presentation, handoff design, adoption that outlasts you | D6 |
+| Team Enablement & Operational Productivity | 45 min | Config, rollout, developer workflows, operational issue resolution | D7 |
+
+**Prerequisites assumed by exam:** Claude 101 · Claude Code in Action · AI Fluency: Framework & Foundations · Building with the Claude API · Intro to MCP · AI Capabilities & Limitations
+
+---
+
+## Official Learning Outcomes (what the exam measures)
+
+By exam time you must be able to:
+
+- **Translate ambiguity → architecture** — Select reference architecture, model, context strategy, and entry point that keep a solution accurate and cost-conscious
+- **PoC → production** — Map cost, latency, reliability to a budget; specify integration patterns an enterprise will accept
+- **Design the safety stack** — Place input screening, output screening, tool-call authorization so the system **fails closed, not open**
+- **Evals as the gate** — Build evaluations as acceptance criteria used before any model or architecture change
+- **Governance routing** — Route decisions by confidence, reversibility, cost; map each compliance obligation to a named control + owner + evidence artifact
+- **Stakeholder communication** — Run structured discovery; present trade-offs non-technical stakeholders can act on; design a handoff that survives your absence
+- **Team enablement** — Enable a team to adopt and operate a live system: shared config, rollout, developer workflows, issue resolution without depending on you
 `;
 
 function mdToHtml(md) {
