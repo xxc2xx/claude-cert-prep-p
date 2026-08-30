@@ -152,6 +152,9 @@
   .mock-banner button.primary { color: var(--accent); border-color: var(--accent); }
   .mock-banner button:hover { background: var(--hover); }
   .mock-timer-warn { color: var(--red) !important; font-weight: 600; }
+  .flag-btn { color: var(--muted) !important; }
+  .flag-btn.flagged-active { color: #f59e0b !important; border-color: #f59e0b !important; background: rgba(245,158,11,0.10) !important; }
+  .flag-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: rgba(245,158,11,0.15); color: #f59e0b; margin-left: 4px; vertical-align: middle; }
 
   .mock-results {
     background: var(--panel);
@@ -978,7 +981,7 @@
     <div class="hdr-main">
       <div class="hdr-title-area">
         <h1 class="hdr-cert-name">CCAR-P Study Hub <span class="accent">| Unofficial Exam Prep</span></h1>
-        <p class="hdr-subtitle">Unofficial prep · Claude Certified Architect – Professional · 392 Q · 7 Domains</p>
+        <p class="hdr-subtitle">Unofficial prep · Claude Certified Architect – Professional · 404 Q · 7 Domains</p>
       </div>
       <div class="hdr-right">
         <div class="theme-seg" id="theme-seg" title="Toggle colour theme">
@@ -1075,6 +1078,7 @@
       <button class="mock-btn" id="mock-exam-d" title="Advanced Mock D — 63 hard questions, timed" style="background:#7c3aed;border-color:#7c3aed;color:#fff">▶ Adv D</button>
       <button class="mock-btn" id="mock-exam-e" title="Advanced Mock E — 63 hard questions, timed" style="background:#7c3aed;border-color:#7c3aed;color:#fff">▶ Adv E</button>
       <button class="mock-btn" id="mock-exam-f" title="Advanced Mock F — 63 hard questions, timed" style="background:#7c3aed;border-color:#7c3aed;color:#fff">▶ Adv F</button>
+      <button class="mock-btn" id="mock-exam-final" title="Final Sim — 15 locked questions, no domain labels, binding-constraint difficulty" style="background:#b91c1c;border-color:#b91c1c;color:#fff">🔒 Final Sim</button>
         <button id="apply-filters" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--muted);font-family:inherit;cursor:pointer;">Apply</button>
         <button id="reset" class="danger" style="margin-left:auto;">Reset progress</button>
       </div>
@@ -1084,7 +1088,8 @@
       <div class="mock-info">
         <b>🔴 Mock Exam in progress</b> —
         <span id="mock-answered">0</span>/63 answered ·
-        <span id="mock-timer" style="font-weight:700;color:var(--accent);">2:00</span> remaining
+        <span id="mock-flagged">0</span> flagged ·
+        <span id="mock-timer" style="font-weight:700;color:var(--accent);">120:00</span> remaining
       </div>
       <div class="mock-actions">
         <button class="primary" id="mock-submit">Submit Mock</button>
@@ -2818,6 +2823,36 @@ const QUESTIONS = [
   {"id": "Q388", "block": "D7 — Developer Productivity", "topic": "D7 — 7.2", "domain": "D7", "form": "Advanced Mock F", "tier": "exam", "qtype": "multi", "difficulty": "Hard", "q": "Select TWO AI-assisted development uses that preserve strong engineering controls.", "choices": ["Use Claude to explore code and draft changes, then run deterministic tests/CI and human review", "Use Claude to summarize traces and propose hypotheses that engineers can reproduce", "Auto-merge production changes solely because the model is confident", "Give the coding agent permanent production-admin credentials", "Disable code ownership"], "answerSet": [0, 1], "explain": "<b>Correct: A, B.</b> AI can accelerate exploration and drafting while verification remains explicit."},
   {"id": "Q389", "block": "D7 — Developer Productivity", "topic": "D7 — 7.3", "domain": "D7", "form": "Advanced Mock F", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A production incident is difficult to reproduce because the agent's prompt, model, MCP server, and repository state all changed since the failure. What practice would have helped most?", "choices": ["Versioned, trace-linked execution metadata and reproducible snapshots/identifiers for the relevant dependencies", "More verbose final-response text so auditors can reconstruct the reasoning chain from the output prose alone", "Longer context windows that retain the full session history so any investigator can rerun the conversation verbatim", "More concurrent agents so any single failure is averaged out across the ensemble and the overall result remains stable"], "answer": 0, "explain": "<b>A — Correct.</b> Operational debugging depends on being able to reconstruct the state that produced the failure."},
 
+  {"id": "Q390", "block": "D5 — Governance, Safety & Risk", "topic": "D5 — 5.2", "domain": "D5", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A payment-processing agent has a prompt instruction: \"Never approve transactions over $5,000 without manager confirmation.\" During a red-team exercise, a crafted user message successfully bypasses this limit via indirect instruction injection. The refund workflow depends on Claude to enforce this threshold; restructuring it would take two sprints. What should the architect change first?", "choices": ["Strengthen the prompt instruction with an additional clarification that the $5,000 rule cannot be overridden by any user message", "Enforce the $5,000 threshold as a deterministic check in the tool execution layer, outside the model", "Switch to a larger model with stronger instruction-following", "Add a guard-rail reviewer model to evaluate each transaction request before execution"], "answer": 1, "explain": "<b>B — Correct.</b> Enforcement at the tool layer is structurally immune to prompt injection — the check runs regardless of what the model was instructed to do. A remains vulnerable to the same injection vector. C does not close the architectural gap. D is a mitigation that still allows an injected instruction to reach the model before review."},
+
+  {"id": "Q391", "block": "D3 — Integration & Tool Use", "topic": "D3 — 3.7", "domain": "D3", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A customer analytics platform connects Claude to three internal services (CRM, billing, support tickets), each with its own authentication system. The team evaluates two options: (A) three direct API integrations built into the orchestration layer, or (B) three MCP servers with tool-based access. Query volume is low (< 200/day). The primary operational constraint is that individual data-source teams may change their APIs independently and without advance coordination. Which is the strongest architectural reason to prefer MCP here?", "choices": ["MCP reduces latency because tool execution runs in a separate process closer to the data source", "MCP isolates each integration boundary so a data-source API change requires updating only that MCP server, not the orchestration layer", "MCP is architecturally required when authentication systems differ across integrated services", "MCP provides automatic retry and circuit-breaker logic that direct API integrations cannot replicate"], "answer": 1, "explain": "<b>B — Correct.</b> The binding constraint is independent change by each data-source team. MCP boundaries mean only the affected server needs updating — the orchestration layer stays stable. A is false: MCP adds a network hop. C is false: direct integration handles mixed auth. D is false: retry logic can be implemented in either approach."},
+
+  {"id": "Q392", "block": "D1 — Solution Design & Architecture", "topic": "D1 — 1.2", "domain": "D1", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A retail operations team wants to reduce inbound support tickets using AI. An engineer has already prototyped a multi-agent pipeline: intent classifier → domain router → specialist handlers. The PM wants to route 20% of live traffic to the prototype next sprint. Before approving the rollout plan, what must the architect establish first?", "choices": ["Whether the prototype's multi-agent design is the right architecture for the use case", "Success metrics, escalation thresholds, and the conditions that trigger a rollback before any production traffic", "Which specialist handler has the highest offline accuracy in held-out evaluation", "Throughput capacity and cost-per-query projections at target volume"], "answer": 1, "explain": "<b>B — Correct.</b> Production deployment cannot be governed without knowing what success and failure look like, who owns the rollback decision, and at what threshold it fires. A matters but cannot be evaluated without B's metric framework. C and D are measurement activities that assume B already exists."},
+
+  {"id": "Q393", "block": "D6 — Stakeholder Communication & Lifecycle", "topic": "D6 — 6.3", "domain": "D6", "form": "Final Sim", "tier": "exam", "qtype": "multi", "difficulty": "Very hard", "q": "A healthcare triage AI is completing its pilot phase. The following are confirmed complete: pilot accuracy meets target, a clinical champion is assigned, IT security review passed, and HIPAA risk assessment is complete. Two items are explicitly not yet resolved: (1) no documented process specifying when quality concerns escalate from the clinical champion to the steering committee; (2) no agreed threshold at which measured model degradation triggers an intervention.\n\nSelect TWO items that represent blocking gaps before production launch.", "choices": ["A second independent clinical validation study to confirm pilot accuracy on a larger dataset", "A documented escalation path from the clinical champion to the steering committee for quality concerns", "A production monitoring dashboard displaying all available system metrics in real time", "A defined degradation threshold and the intervention process it triggers", "A contract amendment explicitly classifying the system as AI-assisted rather than AI-determined"], "answerSet": [1, 3], "explain": "<b>Correct: B, D.</b> Both are explicitly identified as missing. The escalation path (B) and degradation threshold (D) are the two governance gaps stated in the stem. A: pilot accuracy already meets target — a second validation study is not a launch gate. C: a monitoring dashboard is useful but doesn't block launch if monitoring ownership and escalation are assigned. E: contract classification is not identified as an open issue."},
+
+  {"id": "Q394", "block": "D5 — Governance, Safety & Risk", "topic": "D5 — 5.3", "domain": "D5", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A customer-service agent can issue refunds using a billing tool. The tool accepts a user_id parameter drawn directly from the conversation context. A security review finds that users can claim to be a different customer in their message to redirect refunds. The team proposes adding the prompt instruction: \"Always verify the claimed user_id matches the authenticated account before issuing a refund.\" What is the strongest architectural fix?", "choices": ["Add the prompt instruction and a secondary reviewer model to catch identity mismatches before tool execution", "Require the tool handler to resolve user identity from the authenticated session token, not from the conversation context", "Restrict refunds to amounts under $50 to reduce the blast radius of any identity confusion", "Add input validation that checks the claimed user_id against a regex pattern for valid ID format"], "answer": 1, "explain": "<b>B — Correct.</b> Identity resolution must happen at the tool layer from an authenticated, model-independent source. A still trusts the conversation context, which an attacker controls. C reduces blast radius but does not fix the root cause. D validates format, not identity — a valid-format ID can still be someone else's account."},
+
+  {"id": "Q395", "block": "D4 — Evaluation, Testing & Optimization", "topic": "D4 — 4.3", "domain": "D4", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A document-retrieval system has been in production for three months. Telemetry shows: retrieval recall = 91% (stable). Generation accuracy on single-document questions = 87%. However, accuracy on queries requiring comparison across multiple documents has dropped from 78% to 61% over the past two weeks. No model updates occurred. A re-indexing job ran 12 days ago. What is the most likely root cause, and the right first intervention?", "choices": ["The model degrades on cross-document reasoning at scale; switch to a model with a larger context window", "The re-indexing job likely altered chunk boundaries, destroying the cross-document linking metadata that comparison queries depend on; audit and fix the chunking strategy", "Retrieval recall is high but the retriever may be returning wrong documents for comparison queries; retune the ranking function", "Generation quality has degraded across all task types; run a prompt-engineering pass to improve multi-document synthesis instructions"], "answer": 1, "explain": "<b>B — Correct.</b> The failure's onset exactly matches the re-indexing job 12 days ago. Cross-document comparison relies on metadata linking related chunks; a chunking change at re-index breaks this while leaving single-document recall intact. A: no model update occurred. C: recall is stable at 91%, ruling out retrieval ranking as the primary cause. D: single-document accuracy is fine at 87%, ruling out general generation degradation."},
+
+  {"id": "Q396", "block": "D5 — Governance, Safety & Risk", "topic": "D5 — 5.2 [Yes/No]", "domain": "D5", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "Mark YES if the statement correctly describes how the control prevents the stated failure mode.\n1) Prompt instructions that say \"never discuss competitor products\" prevent a prompt-injected user message from causing the agent to discuss competitors.\n2) Enforcing permissions at the tool execution layer prevents the model from completing a restricted operation even if prompt injection instructs it to.\n3) A mandatory human-in-the-loop approval step for irreversible actions prevents those actions from completing without explicit human confirmation.\n4) Output filtering for PII removes sensitive data from responses regardless of whether the model generated it or a tool result included it.\n5) Limiting the agent's tool surface to a minimum reduces the impact of a successful prompt injection.", "choices": ["1=Y / 2=Y / 3=Y / 4=N / 5=Y", "1=N / 2=Y / 3=Y / 4=Y / 5=Y", "1=Y / 2=Y / 3=N / 4=Y / 5=Y", "1=N / 2=N / 3=Y / 4=Y / 5=N"], "answer": 1, "explain": "<b>Correct: 1=N / 2=Y / 3=Y / 4=Y / 5=Y.</b> (1) N — prompt instructions only apply if the model follows them; injection bypasses this. (2) Y — tool-layer enforcement is model-independent. (3) Y — HITL for irreversible actions structurally prevents completion without confirmation. (4) Y — output filtering operates on the final output layer regardless of source. (5) Y — minimal capability limits blast radius of any successful injection."},
+
+  {"id": "Q397", "block": "D3 — Integration & Tool Use", "topic": "D3 — 3.1", "domain": "D3", "form": "Final Sim", "tier": "exam", "qtype": "multi", "difficulty": "Very hard", "q": "A logistics platform exposes 75 shipment-tracking operations via MCP. Analysis shows Claude frequently confuses four similarly-named customer-account tools (account_lookup, account_verify, account_status, account_summary), while the other 71 tools are selected correctly. Tool schemas consume 18% of input context. P95 latency and token cost are within SLA. Security policy requires all 75 tools to remain accessible during a session.\n\nSelect TWO changes that address the observed failure without violating the stated constraints.", "choices": ["Implement progressive tool discovery, routing Claude to a reduced initial tool surface before loading the full catalogue", "Redesign the four overlapping tools with clearer names and unambiguous descriptions that make their distinct purposes explicit", "Route tool selection through a larger, more capable model to improve disambiguation across all 75 tools", "Add targeted few-shot examples in the system prompt demonstrating correct selection among the four ambiguous tools", "Group all 75 operations behind a single generic enterprise-action tool to simplify selection decisions"], "answerSet": [1, 3], "explain": "<b>Correct: B, D.</b> The failure is specific to 4 ambiguous tools while 71 are correct — the fix should be targeted. Redesigning those four tools (B) addresses the root cause. Few-shot examples for exactly the failing set (D) is a precise additive fix. A violates the 'all 75 must remain accessible' constraint. C adds cost across all requests without fixing the naming ambiguity. E violates the constraint and destroys the operational granularity the business needs."},
+
+  {"id": "Q398", "block": "D1 — Solution Design & Architecture", "topic": "D1 — 1.5", "domain": "D1", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "An insurance claims platform processes 10,000 claims per month. The ML team proposes a fully autonomous multi-agent pipeline: document parser → field extractor → fraud detector → approval decision. The legal team flags that auto-denial of any claim without human review is legally impermissible. P95 processing time must remain under 30 seconds. The fraud detector flags roughly 3% of claims. What is the most appropriate architecture?", "choices": ["Autonomous pipeline for all claims with a post-decision audit log provided to legal for periodic review", "Autonomous pipeline for standard claims; mandatory human review gate before any denial or fraud-flag resolution, operating within the latency constraint", "Remove the fraud detector from the pipeline entirely to eliminate the possibility of auto-denial", "Require a human adjuster to approve every step of the pipeline for every claim to satisfy the legal constraint"], "answer": 1, "explain": "<b>B — Correct.</b> The legal constraint requires human review before denial; 97% of non-flagged cases can proceed autonomously. A violates the legal constraint by allowing auto-denial. C removes the fraud detector, defeating the business objective. D cannot scale to 10,000 claims per month within the 30-second p95 constraint and defeats the purpose of the system."},
+
+  {"id": "Q399", "block": "D6 — Stakeholder Communication & Lifecycle", "topic": "D6 — 6.2", "domain": "D6", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A pilot AI contract-review system has passed offline accuracy testing and an IT security review. A business owner is assigned. The system flags clauses for human attorney review; it makes no autonomous decisions. The team is ready to move to production. One item is not yet complete: no process exists for how attorney feedback on flagged clauses flows back to improve the model over time. Should this gap block production launch?", "choices": ["Yes — a feedback and continuous-improvement process must be established before any production launch", "No — since all decisions route through human attorneys, the system is safe to launch; a feedback loop is a Phase 2 improvement activity", "Yes — without a feedback loop the system cannot be certified production-ready under any lifecycle governance framework", "No — feedback loops are optional for any AI system that does not make autonomous decisions"], "answer": 1, "explain": "<b>B — Correct.</b> Because every decision passes through a human attorney, the system is safe to deploy. A feedback loop for future model improvement is a valid post-launch activity, not a launch gate. A and C overstate the requirement — the launch gate criteria concern safety, not future optimization. D is correct in its reasoning but framed too broadly as an absolute rule."},
+
+  {"id": "Q400", "block": "D3 — Integration & Tool Use", "topic": "D3 — 3.2", "domain": "D3", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A multi-tenant SaaS platform's AI assistant uses MCP. Each tenant's data is isolated. The MCP read_document tool fetches from the database using only a document_id — it does not verify the requesting user's tenant. A red-team exercise confirms that a user in Tenant A can read Tenant B's documents by guessing IDs. Converting document IDs to unguessable UUIDs would require a data migration across 50 million rows. What should the architect prioritize first?", "choices": ["Add the prompt instruction: \"Only retrieve documents belonging to the current user's tenant\"", "Implement tenant-scoped authorization inside the read_document tool handler, verifying the requesting user's tenant before executing the database query", "Begin the 50-million-row migration to unguessable UUIDs as the most complete fix for the exposure", "Add a supervisor agent that reviews each read_document call and rejects cross-tenant requests before execution"], "answer": 1, "explain": "<b>B — Correct.</b> Authorization at the tool layer is the immediate structural fix and requires no migration. A is bypassable via prompt injection — it relies on the model complying with an instruction an attacker can override. C is the right long-term hardening but does not fix the current live exposure; B is the required first action. D is a mitigation that still allows the model to attempt unauthorized reads and adds latency without closing the structural gap."},
+
+  {"id": "Q401", "block": "D2 — Models, Prompting & Context", "topic": "D2 — 2.2", "domain": "D2", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A travel booking assistant generates quoted prices that occasionally deviate from the source data. A post-generation monitor flags outputs where quoted prices deviate more than 30% from the pricing database. Flagged responses queue for human review, adding 3–5 minutes of latency and consuming 0.4 FTE per week. The team wants to reduce both the error rate and the review queue volume. Which change addresses the root cause?", "choices": ["Lower the deviation threshold to 15% to catch more pricing errors before they reach customers", "Add a second, faster model to pre-screen outputs before the primary quality monitor", "Enforce that quoted prices are read directly from the structured pricing database and inserted into the response, rather than generated by the model", "Add a confidence score to each price estimate so reviewers can prioritize high-uncertainty cases first"], "answer": 2, "explain": "<b>C — Correct.</b> Prices should not be generated by the model — they should come from the data source deterministically. This eliminates the generative error at its origin. A, B, and D all improve monitoring or triage of a problem that should not exist in the first place. These are mitigations of a symptom, not elimination of the cause."},
+
+  {"id": "Q402", "block": "D1 — Solution Design & Architecture", "topic": "D1 — 1.3 [Yes/No]", "domain": "D1", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "Mark YES if the described scenario is better served by an agent architecture than a deterministic workflow.\n1) Routing customer support queries to one of five specialist handlers based on intent classification.\n2) Processing insurance claims where required information fields differ by claim type and may require iterative clarification from the customer.\n3) Generating a weekly executive summary by pulling the same three data sources in the same sequence each time.\n4) Investigating a cybersecurity incident where the next diagnostic step depends on findings from the current step.\n5) Translating a fixed batch of 500 product descriptions into three languages simultaneously.", "choices": ["1=Y / 2=Y / 3=N / 4=Y / 5=N", "1=N / 2=N / 3=N / 4=Y / 5=Y", "1=N / 2=Y / 3=Y / 4=Y / 5=N", "1=N / 2=Y / 3=N / 4=Y / 5=N"], "answer": 3, "explain": "<b>Correct: 1=N / 2=Y / 3=N / 4=Y / 5=N.</b> (1) N — classification-based routing is a deterministic workflow pattern. (2) Y — variable information gathering with iterative clarification suits an agent. (3) N — fixed steps, same sources, same sequence: a prompt-chaining or scheduled workflow. (4) Y — adaptive diagnosis where each step is determined by prior findings is the canonical agent use case. (5) N — parallel batch translation is a parallelization workflow with fixed inputs and fixed outputs."},
+
+  {"id": "Q403", "block": "D4 — Evaluation, Testing & Optimization", "topic": "D4 — 4.1", "domain": "D4", "form": "Final Sim", "tier": "exam", "qtype": "multi", "difficulty": "Very hard", "q": "A legal document clause-extraction system must meet three hard requirements: accuracy ≥ 92%, end-to-end latency ≤ 4.0 seconds per page, cost ≤ $0.08 per page. A benchmark across four configurations produces these results:\nConfig 1 (Large model, no caching): Accuracy 94% | Latency 3.8s | Cost $0.14/page\nConfig 2 (Large model, prompt caching): Accuracy 94% | Latency 3.8s | Cost $0.07/page\nConfig 3 (Medium model + RAG): Accuracy 93% | Latency 2.1s | Cost $0.06/page\nConfig 4 (Medium model + chain-of-thought): Accuracy 93% | Latency 5.2s | Cost $0.07/page\n\nSelect TWO configurations that must be eliminated based solely on the stated requirements.", "choices": ["Config 1", "Config 2", "Config 3", "Config 4", "None — all four configurations meet the stated requirements"], "answerSet": [0, 3], "explain": "<b>Correct: Config 1 and Config 4.</b> Config 1: cost $0.14/page exceeds the $0.08 limit — eliminated. Config 4: latency 5.2s exceeds the 4.0s limit — eliminated. Config 2 passes all three constraints ($0.07, 3.8s, 94%). Config 3 passes all three constraints ($0.06, 2.1s, 93%). Both Configs 2 and 3 are viable; the next step would be comparing them on other dimensions (operational complexity, accuracy margin, etc.)."},
+
+  {"id": "Q404", "block": "D5 — Governance, Safety & Risk", "topic": "D5 — 5.4", "domain": "D5", "form": "Final Sim", "tier": "exam", "qtype": "single", "difficulty": "Very hard", "q": "A medical diagnosis support tool presents Claude's differential diagnoses to clinicians. There is no mandatory review step; clinicians can act on output immediately. Following an adverse event, the risk committee approves exactly ONE architectural change. The binding constraint: the change cannot add more than 30 seconds to the average clinical workflow. Two proposals are on the table: (A) confidence thresholding — route low-confidence outputs to a human review queue, allow high-confidence outputs to proceed; (B) mandatory second-clinician sign-off required for all Claude suggestions. Which should the architect recommend?", "choices": ["Confidence thresholding — risk-proportionate routing keeps high-confidence cases within the 30-second constraint while adding mandatory human review only for uncertain outputs", "Mandatory second-clinician sign-off, optimized with a streamlined interface designed to stay within 30 seconds for the average case", "Confidence thresholding with a lower confidence threshold, routing a larger proportion of cases to the human queue regardless of latency impact", "An output-length monitor — flag unusually long differential diagnoses for review as a proxy for model uncertainty"], "answer": 0, "explain": "<b>A — Correct.</b> Confidence-based routing satisfies both requirements: the safety requirement (high-risk, uncertain cases get mandatory human review) and the latency constraint (high-confidence cases proceed without additional delay). B likely violates the 30-second constraint across all cases at clinical volume and is not approved under the 'exactly one change' scope. C increases review queue volume further and worsens the latency problem for a larger share of cases. D monitors the wrong signal — output length is not a reliable proxy for model uncertainty or clinical risk."},
+
 ];
 
 const STORAGE_KEY = 'claude-cert-p-progress';
@@ -2855,6 +2890,25 @@ function shuffle(arr) {
   }
   return a;
 }
+
+// ===== QC: correct-option length check =====
+(function qcOptionLengths() {
+  const RATIO_THRESHOLD = 1.6;
+  const violations = [];
+  for (const q of QUESTIONS) {
+    const correct = q.choices[q.answer];
+    if (!correct) continue;
+    const distractors = q.choices.filter((_, i) => i !== q.answer);
+    if (distractors.length === 0) continue;
+    const meanDistractor = distractors.reduce((s, c) => s + c.length, 0) / distractors.length;
+    if (meanDistractor > 0 && correct.length / meanDistractor >= RATIO_THRESHOLD) {
+      violations.push({ id: q.id, ratio: (correct.length / meanDistractor).toFixed(2) });
+    }
+  }
+  if (violations.length > 0) {
+    console.warn('[QC] Correct option is ≥' + RATIO_THRESHOLD + '× mean distractor length in ' + violations.length + ' question(s):', violations.map(v => v.id + ' (' + v.ratio + 'x)').join(', '));
+  }
+})();
 
 // ===== Filters =====
 function populateFilters() {
@@ -2932,7 +2986,7 @@ function getFiltered() {
 // CCAR-P: 63 Qs, 120 min, domains D1:17% D2:13% D3:19% D4:16% D5:14% D6:14% D7:7%
 const MOCK_WEIGHTS_RANDOM = { D1:11, D2:8, D3:12, D4:10, D5:9, D6:9, D7:4 }; // sums to 63
 const MOCK_DURATION_MS = 120 * 60 * 1000;
-let mockState = { active: false, qids: [], startedAt: 0, progress: {}, timerHandle: null, label: '' };
+let mockState = { active: false, qids: [], startedAt: 0, progress: {}, flagged: new Set(), timerHandle: null, label: '' };
 let retrySession = { active: false, qids: new Set() };
 
 function startMockExam(mode) {
@@ -2941,7 +2995,9 @@ function startMockExam(mode) {
   if (retrySession.active) retrySession = { active: false, qids: new Set() };
 
   let draw;
-  if (mode === 'D' || mode === 'E' || mode === 'F') {
+  if (mode === 'final') {
+    draw = QUESTIONS.filter(q => q.form === 'Final Sim');
+  } else if (mode === 'D' || mode === 'E' || mode === 'F') {
     const formName = 'Advanced Mock ' + mode;
     draw = shuffle(QUESTIONS.filter(q => q.form === formName));
   } else if (mode === 'A' || mode === 'B' || mode === 'C') {
@@ -2965,12 +3021,13 @@ function startMockExam(mode) {
     draw = shuffle(draw).slice(0, 63);
   }
 
-  const label = mode === 'random' ? 'Random 63' : 'Mock ' + mode;
+  const label = mode === 'random' ? 'Random 63' : mode === 'final' ? '🔒 Final Sim' : 'Mock ' + mode;
   mockState = {
     active: true,
     qids: draw.map(q => q.id),
     startedAt: Date.now(),
     progress: {},
+    flagged: new Set(),
     timerHandle: null,
     label,
   };
@@ -2995,13 +3052,15 @@ function updateMockTimer() {
 
 function updateMockAnswered() {
   document.getElementById('mock-answered').textContent = Object.keys(mockState.progress).length;
+  const flagEl = document.getElementById('mock-flagged');
+  if (flagEl) flagEl.textContent = mockState.flagged ? mockState.flagged.size : 0;
 }
 
 function abortMockExam() {
   if (!mockState.active) return;
   if (!confirm('Abort the mock exam? Progress in this mock will be discarded.')) return;
   clearInterval(mockState.timerHandle);
-  mockState = { active: false, qids: [], startedAt: 0, progress: {}, timerHandle: null, label: '' };
+  mockState = { active: false, qids: [], startedAt: 0, progress: {}, flagged: new Set(), timerHandle: null, label: '' };
   document.getElementById('mock-banner').style.display = 'none';
   render();
 }
@@ -3033,12 +3092,22 @@ function endMockExam(timedOut = false) {
     return `<tr><td><b>${d}</b></td><td style="color:var(--muted);font-size:11px">${domNames[d]}</td><td>${s.c}/${s.t}</td><td class="${cls}">${pct}%</td></tr>`;
   }).join('');
 
+  const flaggedIds = mockState.flagged ? [...mockState.flagged] : [];
+  const flaggedCount = flaggedIds.length;
+  const flaggedCorrect = flaggedIds.filter(id => mockState.progress[id] && mockState.progress[id].correct).length;
+  const flaggedWrong = flaggedIds.filter(id => mockState.progress[id] && !mockState.progress[id].correct).length;
+  const flaggedUnanswered = flaggedCount - flaggedCorrect - flaggedWrong;
+  const flagStats = flaggedCount > 0
+    ? `<div style="margin-top:8px;font-size:13px;color:var(--muted)">🚩 Flagged ${flaggedCount} · ${flaggedCorrect} correct · ${flaggedWrong} wrong${flaggedUnanswered > 0 ? ` · ${flaggedUnanswered} unanswered` : ''}</div>`
+    : `<div style="margin-top:8px;font-size:13px;color:var(--muted)">No items flagged.</div>`;
+
   const banner = `
     <div class="mock-results">
       <h2>${timedOut ? '⏱ Time up' : '🏁'} ${mockState.label} — Result</h2>
       <div>Answered ${answered}/${total} · Correct ${correct}</div>
       <div class="score-big ${passed ? 'score-pass' : 'score-fail'}">${scaled} / 1000</div>
-      <div><b>${passed ? '✅ PASS' : '❌ FAIL'}</b> · Passing = 720. Need ≥46 correct out of 63.</div>
+      <div><b>${passed ? '✅ PASS' : '❌ FAIL'}</b> · Passing = 720 (scaled — no published raw-score conversion).</div>
+      ${flagStats}
       <table style="margin-top:16px">
         <thead><tr><th>Domain</th><th></th><th>Score</th><th>%</th></tr></thead>
         <tbody>${domainRows}</tbody>
@@ -3054,7 +3123,7 @@ function endMockExam(timedOut = false) {
   lastMock = record;
   try { __storage.setItem(MOCK_HISTORY_KEY, JSON.stringify(mockHistory.slice(-10))); } catch(e) {}
 
-  mockState = { active: false, qids: state.qids, startedAt: 0, progress: state.progress, timerHandle: null, label: '' };
+  mockState = { active: false, qids: state.qids, startedAt: 0, progress: state.progress, flagged: new Set(), timerHandle: null, label: '' };
   document.getElementById('mock-banner').style.display = 'none';
   const quizEl = document.getElementById('quiz');
   quizEl.innerHTML = banner;
@@ -3245,11 +3314,13 @@ function renderQuestion(q, idx) {
     }
   }
 
+  const isFlagged = inMock && mockState.flagged && mockState.flagged.has(q.id);
   card.innerHTML = `
     <div class="qmeta">
-      <span class="tag">${q.domain}</span>
-      <span class="tag topic" style="font-size:11px">${q.topic.length > 50 ? q.topic.slice(0,50)+'…' : q.topic}</span>
+      ${inMock ? '' : `<span class="tag">${q.domain}</span>`}
+      ${inMock ? '' : `<span class="tag topic" style="font-size:11px">${q.topic.length > 50 ? q.topic.slice(0,50)+'…' : q.topic}</span>`}
       <span>Q${idx + 1}</span>
+      ${isFlagged ? '<span class="flag-badge">🚩 Flagged</span>' : ''}
       ${multiBadge}${diffBadge}
       ${showVerdict ? `<span class="verdict ${p.correct ? 'ok' : 'bad'}">${p.correct ? '✓ Correct' : '✗ Wrong'}</span>` : (locked && inMock ? '<span class="verdict">Answered</span>' : '')}
       ${confBadge}${blindSpotBadge}${luckyBadge}
@@ -3267,6 +3338,7 @@ function renderQuestion(q, idx) {
     </div>` : ''}
     <div class="actions">
       <button data-action="submit" data-qid="${q.id}" ${locked ? 'disabled' : ''}>${locked ? (inMock ? 'Locked' : 'Answered') : 'Submit'}</button>
+      ${inMock ? `<button class="secondary flag-btn${isFlagged ? ' flagged-active' : ''}" data-action="flag" data-qid="${q.id}">🚩 ${isFlagged ? 'Flagged' : 'Flag'}</button>` : ''}
       ${inMock ? '' : `<button class="secondary" data-action="reveal" data-qid="${q.id}">${locked ? 'Hide explanation' : 'Reveal answer'}</button>`}
       ${locked && !inMock ? `<button class="secondary" data-action="retry" data-qid="${q.id}">Retry</button>` : ''}
       ${locked && !inMock ? `<button class="primary" data-action="next" data-qid="${q.id}" style="margin-left:auto;">Next →</button>` : ''}
@@ -3417,6 +3489,31 @@ document.getElementById('quiz').addEventListener('click', (e) => {
     delete progress[qid];
     saveProgress();
     replaceCard(qid);
+  } else if (action === 'flag') {
+    if (!mockState.active) return;
+    if (mockState.flagged.has(qid)) {
+      mockState.flagged.delete(qid);
+    } else {
+      mockState.flagged.add(qid);
+    }
+    updateMockAnswered();
+    const card = btn.closest('.card');
+    if (card) {
+      const isFlagged = mockState.flagged.has(qid);
+      btn.classList.toggle('flagged-active', isFlagged);
+      btn.textContent = '🚩 ' + (isFlagged ? 'Flagged' : 'Flag');
+      let badge = card.querySelector('.flag-badge');
+      if (isFlagged && !badge) {
+        badge = document.createElement('span');
+        badge.className = 'flag-badge';
+        badge.textContent = '🚩 Flagged';
+        const qNum = card.querySelector('.qmeta span');
+        if (qNum) qNum.after(badge);
+      } else if (!isFlagged && badge) {
+        badge.remove();
+      }
+    }
+    return;
   } else if (action === 'elim') {
     e.preventDefault();
     const choice = btn.closest('.choice');
@@ -3478,6 +3575,7 @@ document.getElementById('mock-exam-c').addEventListener('click', () => startMock
 document.getElementById('mock-exam-d').addEventListener('click', () => startMockExam('D'));
 document.getElementById('mock-exam-e').addEventListener('click', () => startMockExam('E'));
 document.getElementById('mock-exam-f').addEventListener('click', () => startMockExam('F'));
+document.getElementById('mock-exam-final').addEventListener('click', () => startMockExam('final'));
 document.getElementById('mock-submit').addEventListener('click', () => endMockExam(false));
 document.getElementById('mock-abort').addEventListener('click', abortMockExam);
 document.getElementById('retry-abort-btn').addEventListener('click', () => {
