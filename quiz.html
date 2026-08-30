@@ -951,6 +951,25 @@
     #cheatsheet-body em { color:#a5b4fc; font-style:italic; }
     #cheatsheet-body code { background:#1e293b; color:#f472b6; padding:1px 4px; border-radius:3px; font-size:0.85em; }
     #cheatsheet-body br { display:block; margin:4px 0; }
+    #cheatsheet-body h4 { font-size:0.87em; color:#fde68a; margin:10px 0 2px; }
+    #cheatsheet-body h5 { font-size:0.83em; color:#f9a8d4; margin:8px 0 1px; }
+    .ch-nav-bar { display:flex; flex-wrap:wrap; gap:5px; margin:0 0 14px; padding:8px 0 10px; border-bottom:1px solid var(--border); }
+    .ch-nav-btn { background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:16px; padding:4px 11px; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; text-decoration:none; display:inline-block; }
+    .ch-nav-btn:hover { background:var(--hover); color:var(--accent); }
+    .next-ch-btn { display:block; margin:16px 0 4px; padding:10px 16px; background:var(--panel-2); color:var(--accent); border:1px solid var(--accent); border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; text-decoration:none; }
+    .next-ch-btn:hover { background:var(--hover); }
+    #blueprint-body h1 { font-size:1.2em; color:#f59e0b; margin:18px 0 6px; }
+    #blueprint-body h2 { font-size:1.05em; color:#7dd3fc; margin:16px 0 4px; border-bottom:1px solid #334155; padding-bottom:4px; }
+    #blueprint-body h3 { font-size:0.95em; color:#86efac; margin:12px 0 3px; }
+    #blueprint-body h4 { font-size:0.87em; color:#fde68a; margin:10px 0 2px; }
+    #blueprint-body p  { color:#cbd5e1; margin:3px 0; font-size:0.87em; line-height:1.55; }
+    #blueprint-body hr { border:none; border-top:1px solid #334155; margin:12px 0; }
+    #blueprint-body ul { padding-left:18px; margin:4px 0 8px; }
+    #blueprint-body li { color:#cbd5e1; font-size:0.87em; margin:2px 0; }
+    #blueprint-body strong { color:#fde68a; }
+    #blueprint-body em { color:#a5b4fc; font-style:italic; }
+    #blueprint-body code { background:#1e293b; color:#f472b6; padding:1px 4px; border-radius:3px; font-size:0.85em; }
+    #blueprint-body br { display:block; margin:4px 0; }
   </style>
 </head>
 <body>
@@ -1095,10 +1114,14 @@
   <div class="tab-content" id="tab-study">
     <div class="tabs" style="margin-bottom:16px;" id="study-subtabs">
       <button class="tab-btn active" data-sub="cheatsheet">📋 Cheatsheet</button>
+      <button class="tab-btn" data-sub="blueprint">📐 Blueprint</button>
       <button class="tab-btn" data-sub="finalcheck">🎯 Final Check</button>
     </div>
     <div id="study-cheatsheet" class="tab-content active">
       <div class="notes-body" id="cheatsheet-body"></div>
+    </div>
+    <div id="study-blueprint" class="tab-content">
+      <div class="notes-body" id="blueprint-body"></div>
     </div>
     <div id="study-finalcheck" class="tab-content">
       <div id="final-check-body"></div>
@@ -3439,6 +3462,7 @@ document.getElementById('study-subtabs').addEventListener('click', (e) => {
   if (el) el.classList.add('active');
   if (sub === 'finalcheck') renderFinalCheck();
   if (sub === 'cheatsheet') renderCheatsheet();
+  if (sub === 'blueprint') renderBlueprint();
 });
 
 // ===== Controls =====
@@ -3593,22 +3617,8 @@ function renderProgress() {
 }
 
 // ===== Cheatsheet =====
-const CHEATSHEET_MD = `# CCAR-P — Official Study Guide
-*Based on the official Anthropic Exam Guide v1.0 · Effective July 2026*
-
-## Exam Facts (Official)
-| Field | Detail |
-|-------|--------|
-| Items | **63 questions** |
-| Time | **120 minutes** |
-| Passing | **Scaled 720 / 1,000** (~46+ correct) |
-| Fee | **$175 USD** |
-| Format | Multiple-choice + Multiple-response (each item states how many to select) |
-| Scoring | Criterion-referenced — fixed standard, not curved |
-| Retakes | 14 days after 1st fail · 30 days after 2nd · 90 days after 3rd · max 4/year |
-| Validity | 12 months — renew via free non-proctored assessment |
-
----
+const BLUEPRINT_MD = `# CCAR-P — Official Exam Blueprint
+*7 domains · exam weights · official objectives · key patterns*
 
 ## Official Blueprint
 
@@ -3914,6 +3924,23 @@ Data residency, auditability, GDPR/HIPAA requirements — architect them in befo
 **S3 · D4 Evaluation — RAG diagnosis**
 > A RAG system returns confident but incorrect answers after a document refresh; latency and model version are unchanged. What is the most likely first place to investigate?
 > **Answer: B — The retrieval/indexing step is returning irrelevant or stale chunks.** Model weights (A) are unchanged. Temperature (C) would cause conservatism, not confident errors. Context window (D) would cause truncation.
+`;
+
+const CHEATSHEET_MD = `# CCAR-P — Official Study Guide
+*Based on the official Anthropic Exam Guide v1.0 · Effective July 2026*
+
+## Exam Facts (Official)
+| Field | Detail |
+|-------|--------|
+| Items | **63 questions** |
+| Time | **120 minutes** |
+| Passing | **Scaled 720 / 1,000** (~46+ correct) |
+| Fee | **$175 USD** |
+| Format | Multiple-choice + Multiple-response (each item states how many to select) |
+| Scoring | Criterion-referenced — fixed standard, not curved |
+| Retakes | 14 days after 1st fail · 30 days after 2nd · 90 days after 3rd · max 4/year |
+| Validity | 12 months — renew via free non-proctored assessment |
+
 
 ---
 
@@ -4350,6 +4377,863 @@ By exam time you must be able to:
 **[S08]** Module · Recap Recap: four things that hold across everything here 01 Team setup is shared configuration, distribution, and spend posture decided up front A team environment is a shared baseline plus a Skills distribution approach: org-provisioned for everyone, plugins for group and org targeting with versioned updates and rollback, project Skills for one team, and API Skills for programmatic reuse, all bounded by model and budget guardrails. 02 Adoption is engineered through champions and batches A champion per team proves the workflow and seeds adoption; access without enablement stalls at basic chat, and lumpy adoption never standardizes the gain. 03 Diligence keeps AI-assisted work trustworthy Hold AI-generated code to correctness, security, and maintainability standards, and require that the author can explain what shipped, captured as a verification checklist that gates before prod
 
 
+
+
+---
+
+# Prerequisite Courses — Skilljar Content
+
+> Five prerequisite courses: Claude 101 · Building with the Claude API · Intro to MCP · Claude Code in Action · AI Fluency. AI Capabilities & Limitations excluded (separate domain, not logged in — partially covered in AI Fluency section below).
+
+## Prerequisite Course: Claude 101
+
+> Official Skilljar course — basic Claude features for knowledge workers.
+
+### What is Claude?
+
+**Key takeaways:**
+- **Claude is built to be helpful, harmless, and honest** — Constitutional AI means trained to align with human values and operate transparently; avoids toxic/discriminatory outputs and assists with illegal/unethical activities
+- **More than a chatbot** — summarization, search, creative & collaborative writing, Q&A, coding; thinking partner for complex problems
+- **Steerable and collaborative** — takes direction on personality, tone, and behavior; less likely to produce harmful outputs than alternatives
+- **Context window** — 200K+ tokens (~500 pages of text) default; up to 1M tokens on Pro, Max, Team, Enterprise plans (supported models)
+- **Thinking mode** — Claude can reason step-by-step before answering when a problem calls for careful analysis
+- **Learning mode** — guides reasoning process rather than providing answers; helps build critical thinking skills
+
+**Ways to access Claude:**
+- **Claude.ai** (web/mobile/desktop) — primary interface; conversations, writing, research, analysis
+- **Claude Code** — agentic coding tool; reads codebase, writes code, runs commands, creates commits; also for file manipulation
+- **Claude Tag** — Claude in Slack; AI assistant in any channel or thread; searches workspace channels, DMs, files
+- **Claude Design** — turn ideas into working interfaces from sketch or description
+- **Claude for Microsoft 365** — sidebar in Excel, PowerPoint, Word, Outlook; carry context across apps
+
+---
+
+### Your first conversation with Claude
+
+**Key takeaways:**
+- **Prompt structure**: Set the stage (role, objectives, context) + Define the task (what action you want) + Specify rules (style, tone, examples)
+- Speak to Claude naturally, concisely, conversationally — like a coworker
+- Upload files/images → Claude references that content in its response (shortcut for context)
+- First drafts are starting points; the real power is continued conversation and refinement
+- Give specific feedback: "Cut the first two paragraphs and make the conclusion more action-oriented" beats "make it shorter"
+
+---
+
+### Getting better results
+
+**AI Fluency 4D Framework** (Dakan & Feller research):
+- **Delegation** — deciding what work should be done by humans vs. AI
+- **Description** — writing effective prompts that communicate intent clearly
+- **Discernment** — evaluating and verifying Claude's outputs critically
+- **Diligence** — responsible, ethical, and safe use of AI tools
+
+**Evals** — set up evaluations to understand how Claude performs on your specific workflows before deploying
+
+---
+
+### How you'll work with Claude on your desktop
+
+Three shapes of work (desktop app):
+1. **Turn-by-turn (Chat tab)** — back-and-forth thinking partner; you steer, Claude revises; value is in the exchange
+2. **Handing work off (Cowork)** — describe an outcome; Claude plans, does it, comes back with result; you review plan and output
+3. **Building software (Code tab / Claude Code)** — reads codebase, writes/tests code, runs commands; developer workspace
+
+---
+
+### Projects
+
+**Key takeaways:**
+- **Self-contained workspaces** with own memory, chat histories, knowledge bases, and customized instructions — dedicated environments for specific work streams
+- **Project knowledge** — upload documents that Claude references across ALL chats in that project; no re-uploading
+- **Project instructions** — specify tone, expertise level, response style; apply to every conversation in the project
+- **Scales automatically** — when knowledge base approaches context limits, Claude switches to searching and pulling only relevant content → up to 10x capacity expansion
+- **Collaboration** — share projects with teammates (Team and Enterprise plans); everyone benefits from same context, instructions, accumulated knowledge
+
+**When to use Projects:** ongoing work streams, reference materials you reuse, workflows needing consistent context
+
+---
+
+### Artifacts
+
+**What are artifacts:** standalone, interactive outputs in a dedicated side window; rendered and ready to use
+
+**Created automatically when:**
+- Content is significant and self-contained (typically >15 lines)
+- Something you'll want to edit, iterate on, or reuse
+- Complex content that stands alone without surrounding conversation
+
+**Types:**
+- Documents (markdown/plain text): reports, notes, project plans
+- Code snippets: any programming language
+- HTML pages: complete web pages with HTML/CSS/JS
+- SVG images: scalable vector graphics
+- Mermaid diagrams: flowcharts, sequence diagrams, Gantt charts, org charts
+- React apps: interactive applications
+
+---
+
+### Skills
+
+**What are Skills:** instruction packages (folders of instructions, scripts, resources) that Claude loads dynamically for specialized tasks
+
+**Two types:**
+- **Anthropic Skills** — created/maintained by Anthropic; includes Excel, Word, PowerPoint, PDF creation; auto-invoked when relevant; available to all paid users
+- **Custom Skills** — org-specific workflows (e.g., brand voice review, quarterly analysis methodology, compliance checklists); codify repeatable workflows
+
+**Requirements:** Code execution and file creation must be enabled; Pro/Max/Team/Enterprise plans (feature preview)
+
+---
+
+### Connectors (Connecting your tools)
+
+**Key takeaways:**
+- **MCP = "USB-C for AI"** — universal standard (Model Context Protocol) allowing Claude to connect to many applications through a single consistent interface; open standard → developers can build connectors for any tool
+- **Two types:**
+  - **Web connectors** — cloud services: Google Drive, Notion, Slack, Asana, and more
+  - **Desktop extensions** — run locally via Claude Desktop app; access local files and native applications
+- Connectors allow Claude to **read information AND perform actions** — search files, retrieve documents, analyze data, create content, update records, execute tasks
+
+---
+
+### Enterprise Search
+
+- Adds "Ask {Your Org Name}" option to sidebar — pre-built project for the entire organization
+- **Unlike regular chats**: specifically designed for information gathering; uses custom instructions configured by Anthropic team
+- Best for: questions spanning multiple sources, synthesis across org knowledge
+- **Use cases:** "What happened yesterday while I was out?", "What are current blockers on Platform project?", policy/process questions, onboarding questions, performance tracking
+- **Security:** respects existing permissions — users only see content they already have access to
+
+---
+
+### Research (for deep dives)
+
+**Key takeaways:**
+- **Agentic** — conducts multiple searches that build on each other; explores different angles automatically; works through open questions systematically
+- **Works with Thinking mode** — plans approach before searching; breaks complex requests into manageable pieces
+- **Takes time** — a few minutes or more; can send out many searches simultaneously, sometimes across hundreds of sources
+- **Citations** — delivers thorough answers with easy-to-check citations for verification
+
+**vs. regular search:** regular chat = single lookup; Research = systematic multi-source investigation
+
+---
+
+### Other ways to work with Claude (beyond Claude.ai)
+
+**Claude Code:**
+- Agentic coding: natural language → writes code, runs tests, creates commits
+- Navigates unfamiliar codebases, debugs, automates tedious tasks (lint errors, merge conflicts, release notes)
+- Works in terminal, IDE, browser, or Slack
+
+**Claude Tag (Slack):**
+- Draft responses to messages, summarize threads, break down discussions
+- Prepare for meetings by pulling relevant conversations and documents
+
+**Claude for Microsoft 365:**
+- Sidebar in Excel, PowerPoint, Word, Outlook
+- Analyze, draft, edit within open document; carry context app-to-app
+
+**Claude Design:**
+- Turns ideas/sketches/screenshots into working interactive prototypes
+- Hand off to team
+
+---
+
+### What's Next (Course summary recap)
+
+- Constitutional AI = helpful, harmless, honest
+- Prompt structure: stage + task + rules
+- AI Fluency 4D: Delegation, Description, Discernment, Diligence
+- Projects: persistent knowledge, instructions, team collaboration
+- Artifacts: standalone reusable outputs (docs, code, HTML, SVG, diagrams, React)
+- Skills: instruction packages for specialized workflows
+- Connectors: MCP standard, web + desktop types
+- Enterprise Search: org-wide knowledge, pre-built project
+- Research: agentic, multi-source, cites everything
+- Claude is available via Claude.ai, Claude Code, Slack (Tag), Excel/PowerPoint/Word (M365), Chrome
+
+
+---
+
+## Prerequisite Course: Building with the Claude API
+
+> Official Skilljar course — comprehensive API usage, tool use, RAG, agents, and workflows.
+
+### API Basics
+
+**Making a request — \`client.messages.create()\`**
+- Required params: \`model\`, \`max_tokens\`, \`messages\`
+- \`max_tokens\` = safety ceiling (stops at N), NOT a target output length
+- API is **stateless** — Claude has no memory of previous requests
+
+**Multi-turn conversations:**
+- Must manually maintain message list in your code
+- Send **complete conversation history** with every request
+- Append assistant replies as \`{"role": "assistant", "content": "..."}\` to message list
+- Without this, Claude treats every request as a fresh conversation
+
+**System prompts:**
+- Passed as \`system=\` parameter in \`messages.create()\`
+- Sets Claude's role, tone, behavior, and constraints
+- Applies across all turns in a conversation
+- Claude responds as if it were the specified role
+
+**Temperature (0.0–1.0):**
+- Controls randomness of token selection
+- **0.0** = fully deterministic (always highest probability token)
+- **1.0** = high variability, creative, spread probability across tokens
+- Not compatible with Extended Thinking
+
+**Response streaming:**
+- Send chunks as generated instead of waiting for complete response
+- Event types: \`MessageStart\` → \`ContentBlockStart\` → \`ContentBlockDelta\` (text chunks) → \`ContentBlockStop\` → \`MessageDelta\` → \`MessageStop\`
+- Dramatically improves perceived latency in chat apps
+
+**Structured data output:**
+- Problem: Claude adds explanatory text around JSON by default
+- Solution: **assistant message prefilling + stop sequences**
+  - Prefill: start the assistant message with \`{\` 
+  - Stop sequence: \`}\` or \`\\\`\\\`\\\`\`
+  - Claude fills in only the structured content between
+
+---
+
+### Prompt Engineering
+
+**Being clear and direct:**
+- Lead with action verbs: Write, Create, Generate, Identify
+- Use instructions, not questions
+- Simple unambiguous language; no beating around the bush
+
+**Structure with XML tags:**
+- Wrap distinct content sections in descriptive custom XML tags
+- Separates instructions from data: \`<sales_records>\`, \`<my_code>\`, \`<docs>\`
+- Especially important when interpolating large amounts of data
+- Prevents Claude from confusing instructions with content
+
+**Providing examples (few-shot / multi-shot):**
+- One-shot: single example to establish pattern
+- Multi-shot: multiple examples to cover different scenarios
+- Wrap in \`<sample_input>\` and \`<ideal_output>\` tags for clarity
+- Best for: corner cases, complex output formats, exact tone/style, ambiguous inputs
+
+---
+
+### Prompt Evaluation
+
+**Three approaches (escalating rigor):**
+1. Test once → decide it's good (risky — breaks on unexpected inputs)
+2. Test a few times, fix corner cases (better but incomplete)
+3. **Run eval pipeline** — score against metrics, iterate based on objective data (most reliable)
+
+**Eval workflow:**
+- Generate a test dataset (diverse input examples)
+- Run each prompt variant against dataset
+- Grade outputs: model-based grading (Claude as judge) or code-based grading (regex/match)
+- Compare versions; pick the winner
+
+**Iterative improvement cycle:**
+Goal → write initial prompt → evaluate → apply technique → re-evaluate → repeat
+
+---
+
+### Tool Use
+
+**Why tools:** Claude only knows training data; tools give it access to real-time data, external systems, databases
+
+**Tool use flow:**
+1. Send user question + \`tools=[{name, description, input_schema}]\` list
+2. Claude responds with \`ToolUse\` block: \`{id, name, input}\`
+3. Your code executes the function with the provided input
+4. Send result back as \`ToolResult\` block: \`{tool_use_id, content, is_error}\`
+5. Claude generates final response using tool output
+
+**Tool schemas (JSON Schema):**
+- \`name\`: clear, descriptive function name
+- \`description\`: 3–4 sentences — what it does, when to use it, what it returns
+- \`input_schema\`: JSON Schema format for function arguments
+- Claude uses description to decide WHEN to call the tool
+
+**Multi-block responses:**
+- When tool is called, assistant message has multiple content blocks: Text Block + ToolUse Block
+- Must preserve the entire content structure (including all blocks) when appending to history
+
+**Sending tool results:**
+- \`tool_use_id\` must exactly match the ID of the requesting ToolUse block
+- \`content\`: tool output as string
+- \`is_error: true\` if the function call failed
+
+**Multiple simultaneous tool calls:**
+- Claude can return multiple ToolUse blocks in one response
+- Each has a unique ID; match IDs when sending back ToolResult blocks
+- Run all tool calls, collect results, send all ToolResults in one user message
+
+**\`tool_choice\` (fine-grained control):**
+- \`auto\`: Claude decides whether to use tools (default)
+- \`any\`: Claude must use at least one tool
+- \`tool\`: Force Claude to call a specific named tool
+- Important: \`tool_choice: tool\` disables extended thinking
+
+---
+
+### Retrieval Augmented Generation (RAG)
+
+**Problem:** Large documents exceed context window; inefficient to include everything
+
+**RAG approach:**
+1. **Preprocessing**: break document into chunks
+2. **Embedding**: convert chunks to numerical vectors (via VoyageAI — Anthropic doesn't provide embedding API)
+3. **Query**: embed the user question
+4. **Search**: find top-k chunks with highest cosine similarity to question
+5. **Augment**: include relevant chunks in prompt alongside question
+6. Claude answers using only the relevant chunks
+
+**Text embeddings:**
+- Numerical representation of text meaning (long vector of floats, -1 to +1)
+- Dimensions represent semantic features (learned during training, not directly interpretable)
+- **Semantic search** finds similar meaning (not just keyword matches)
+- **BM25 lexical search**: keyword-based alternative; combine with semantic = hybrid search
+- Multi-Index RAG: separate indices for different document types or sources
+
+---
+
+### Extended Thinking
+
+- Claude's "scratch paper" — reasons step-by-step before final answer
+- Response structure: \`ThinkingBlock\` (internal reasoning) + \`TextBlock\` (final answer)
+- **Incompatibilities**: NOT compatible with temperature or message prefilling
+- **Costs**: higher token cost (you pay for thinking tokens) + increased latency
+- **When to use**: only after optimizing prompt and still not meeting accuracy requirements
+- Good for: complex reasoning, math, multi-step problems, tasks where thinking process matters
+
+---
+
+### Prompt Caching
+
+- Saves Claude's preprocessing work (tokenization, embeddings, context analysis)
+- **Cache TTL**: 1 hour — only useful for repeated identical content within that window
+- **Not automatic**: must manually add \`cache_control: {"type": "ephemeral"}\` breakpoint
+- Content must be **identical up to the breakpoint** to get a cache hit
+- Requires longhand block format (not shorthand string syntax)
+- Reduces cost and latency for: long system prompts, large documents, repeated context
+
+---
+
+### Model Context Protocol (MCP)
+
+**What MCP solves:** eliminates need to write custom integration code for every external service
+
+**Architecture:**
+- **MCP Client** (your server) ↔ **MCP Server** (specialized integration, e.g., GitHub, Slack)
+- MCP Server contains: tools + prompts + resources
+- You connect your client to MCP server; tools execute inside the server, not your code
+
+**Components:**
+- **Tools**: functions Claude can call (same as regular tool use, but defined in server)
+- **Resources**: data sources Claude can read (files, DB records, API responses)
+- **Prompts**: reusable prompt templates registered in the server
+- **Server Inspector**: debugging tool to test MCP servers
+
+**Why MCP over custom tools:** GitHub alone would require hundreds of tool schemas; MCP servers handle this for you and are maintained separately
+
+---
+
+### Agents and Workflows
+
+**Key decision:**
+- **Use workflows** when you know the exact steps needed (predictable, well-defined tasks)
+- **Use agents** when you don't know the exact steps (flexible, open-ended tasks)
+
+**Workflow patterns:**
+
+| Pattern | How it works | Best for |
+|---------|-------------|----------|
+| **Chaining** | Sequential steps, each building on previous output | Complex tasks needing focus; long prompts that confuse Claude |
+| **Parallelization** | Same input → multiple simultaneous Claude calls, each focused on one criterion | Tasks with multiple independent evaluation dimensions |
+| **Routing** | Classify input → route to specialized pipeline/prompt | Handling diverse request types with different requirements |
+
+**Workflow benefits:** higher accuracy, easier to test/evaluate, predictable, reliable
+
+**Agents:**
+- Give Claude: goal + set of tools
+- Claude formulates its own plan to use tools to achieve goal
+- Can chain tools in unexpected ways; can ask users for clarification
+- **Benefits**: flexible, handles novel situations, less code to maintain
+- **Trade-offs**: less predictable, harder to evaluate, potentially more expensive
+
+---
+
+### Multimodal Features
+
+**Images:**
+- Up to **100 images per request**; max **5MB** per image
+- Max dimensions: **8000px** (1 image) or **2000px** (multiple images)
+- Formats: base64 encoding or URL
+- Token cost: \`(width × height) / 750\`
+- Include as \`image\` content block alongside \`text\` block in user message
+- Apply same prompt engineering as text (examples, step-by-step guidance)
+
+**PDFs:**
+- Similar structure to images; \`type: "document"\`, \`media_type: "application/pdf"\`
+- Claude can extract: text, embedded images/charts, tables, document structure
+- Works for complex multi-page documents
+
+**Citations:**
+- Enable with \`citations: {"enabled": true}\` in document block
+- Response includes: \`cited_text\`, \`document_index\`, \`document_title\`, \`start_page_number\`, \`end_page_number\`
+- Creates verifiable trail from Claude's answer back to source material
+
+---
+
+### Files API + Code Execution
+
+**Files API:**
+- Upload files once → get unique \`file_id\` → reference by ID in future messages
+- Avoids re-uploading the same file in every request
+- Useful for large files or files referenced multiple times
+
+**Code Execution:**
+- Server-side Python execution in **isolated Docker container**
+- **No network access** (cannot make external API calls from within container)
+- Use Files API to pass files into the container (primary data ingestion method)
+- Claude can execute code **multiple times** in a single conversation
+- Results returned to Claude for interpretation
+
+
+---
+
+## Prerequisite Course: Introduction to Model Context Protocol
+
+> Official Skilljar course — MCP architecture, primitives (tools/resources/prompts), and client/server implementation.
+
+### What MCP Solves
+
+- Without MCP: you write all tool schemas + implementations yourself (e.g., GitHub = hundreds of tools to write, test, maintain)
+- With MCP: tool definitions and execution shift to dedicated **MCP Servers**; you just connect your client to the server
+- MCP Server wraps external services and exposes them as standardized tools, resources, and prompts
+
+---
+
+### MCP Architecture
+
+**Components:**
+- **MCP Client** (your server/application) — sends requests to MCP server; bridges your app and external services
+- **MCP Server** — wraps an external service (GitHub, Slack, databases, etc.); exposes tools/resources/prompts
+- **Transport agnostic** — client and server can communicate over: stdio (same machine), HTTP, WebSockets
+
+**Request flow for a user query:**
+1. User submits query to your server
+2. Your server calls MCP client's \`list_tools()\` → client sends \`ListToolsRequest\` to MCP server → gets \`ListToolsResult\`
+3. Your server sends user query + available tools to Claude
+4. Claude decides to call a tool → returns \`ToolUse\` block with tool name + params
+5. Your server calls MCP client's \`call_tool()\` → client sends \`CallToolRequest\` to MCP server → gets \`CallToolResult\`
+6. Your server sends tool result back to Claude → Claude generates final response
+
+**Core message types:**
+- \`ListToolsRequest\` / \`ListToolsResult\` — discover available tools
+- \`CallToolRequest\` / \`CallToolResult\` — execute a tool with arguments
+- \`ReadResourceRequest\` / \`ReadResourceResult\` — fetch resource data
+
+---
+
+### The Three MCP Server Primitives
+
+| Primitive | Controlled by | Purpose |
+|-----------|---------------|---------|
+| **Tools** | **AI model (Claude)** | Give Claude callable capabilities; Claude decides when to use them |
+| **Resources** | **Application code** | Expose data for UI display or prompt augmentation; app decides when to fetch |
+| **Prompts** | **End user** | Pre-built, optimized workflows triggered by user actions (slash commands, buttons) |
+
+**Quick decision rule:**
+- Need to give Claude new capabilities? → **Tools**
+- Need to get data into your app for UI or to inject into context? → **Resources**  
+- Need predefined workflows that users can trigger? → **Prompts**
+
+---
+
+### Tools (Model-Controlled)
+
+- Defined on the MCP server using Python decorators (\`@mcp.tool\`)
+- Python SDK auto-generates JSON Schema from type hints and \`Field\` descriptions — no manual schema writing
+- Claude decides autonomously when to call these tools
+- Tool results flow back to Claude to complete task
+- Example: "calculate square root" → Claude calls JavaScript execution tool
+
+---
+
+### Resources (App-Controlled)
+
+**Two types:**
+- **Direct resources**: static URI (no parameters); perfect for operations with no parameters
+- **Templated resources**: parameterized URI (e.g., \`/documents/{doc_id}\`); SDK parses and passes params as kwargs
+
+**How resources work:**
+- Your app sends \`ReadResourceRequest\` with a URI → MCP server runs the handler → returns \`ReadResourceResult\`
+- Content can be text, JSON, binary — use \`mime_type\` parameter to indicate type
+- **Common use cases:**
+  1. Populate autocomplete UI (show available documents when user types \`@\`)
+  2. Inject document content directly into prompt (avoids a round-trip tool call)
+- The \`@document_name\` mention pattern: user types \`@plan.md\` → app fetches resource → injects content into prompt → Claude receives full context
+
+---
+
+### Prompts (User-Controlled)
+
+- Pre-built, tested message templates that clients can request and use
+- Defined with \`@mcp.prompt\` decorator; returns list of messages
+- Parameters get interpolated at request time (e.g., \`doc_id\` argument fills in the document to format)
+- Users trigger via slash commands (\`/format\`, etc.) or UI buttons
+- **Why use them:** server author spends time crafting + evaluating prompts; users benefit from expertise without becoming prompt engineers
+
+**Workflow:**
+1. Write and evaluate the prompt on the server
+2. Expose via \`@mcp.prompt\` decorator
+3. Client calls \`list_prompts()\` + \`get_prompt(name, arguments={"key": "value"})\`
+4. Returns fully rendered messages ready for Claude
+
+---
+
+### MCP Client Implementation
+
+Two essential functions:
+1. **\`list_tools()\`** — calls \`session.list_tools()\` → returns tools for Claude's \`tools=\` parameter
+2. **\`call_tool(name, input)\`** — calls \`session.call_tool(name, input)\` → returns result for tool result message
+
+Architecture note: In real projects, you build EITHER the client side OR the server side (not both). Building both is for learning how they connect.
+
+---
+
+### MCP vs Regular Tool Use
+
+| Aspect | Regular tool use | MCP |
+|--------|-----------------|-----|
+| Schema definition | You write JSON Schema manually | SDK generates from Python type hints |
+| Function execution | Runs in your server | Runs in MCP server (separate process) |
+| Maintenance | You own and maintain | Third-party can maintain MCP server |
+| Reusability | Per-project | Any MCP-compatible client can use it |
+| Setup complexity | Lower for simple tools | Higher initial setup, lower long-term for complex integrations |
+
+
+---
+
+## Prerequisite Course: Claude Code in Action
+
+> Official Skilljar course — long sessions, CLAUDE.md, hooks, permissions, routines, verification, plugins.
+
+### Steering Long Sessions
+
+**Before Claude starts — Plan Mode:**
+- Plan mode = read-only; Claude researches code and produces a written plan
+- Review the plan carefully before execution; iterate on the plan first (faster than cleaning up bad runs)
+- \`/plan\` or shift-tab to enter plan mode
+
+**While Claude runs:**
+
+**\`/compact [instructions]\`:**
+- Summarizes conversation history, uses summary as new context, discards old messages
+- Always add instructions after \`/compact\` to shape what gets preserved
+- Example: \`/compact focus on the API changes we're making, drop the debugging context\`
+- Risk: important context can be dropped in summary → Claude drifts
+
+**Rewind:**
+- Takes you back to last checkpoint
+- Use when Claude heads in wrong direction — faster than prompting back out
+- Every use of a tool creates a checkpoint
+
+---
+
+### CLAUDE.md That Follows
+
+**Key insight:** CLAUDE.md is **guidance, not enforced config**. Every line competes for Claude's attention. The longer the file → the more it competes with itself → the less reliably Claude follows any single rule.
+
+**Rule:** Keep the file lean. The leaner, the more reliably followed.
+
+**Wrong tool test:** Before adding a rule, ask — is this a guideline or a hard line?
+- Guidelines → CLAUDE.md
+- Hard lines ("never push to main") → **Hooks** (actually enforce it; CLAUDE.md is just a request)
+
+**Four CLAUDE.md locations (all loaded at launch, they stack):**
+1. **Managed policy** — org-level file controlled by platform team; always in play, can't exclude
+2. **User** — personal preferences, follow you across every project on your machine
+3. **Project** — project root; checked into repo; team sees it
+4. **Subdirectory** — scoped rules for a specific folder (e.g., \`/tests/CLAUDE.md\` for test-specific rules)
+
+---
+
+### Verification Skills
+
+**Why build a verification skill first:**
+- Checking Claude's work requires you to *remember* to ask for it
+- A verification skill fires automatically when Claude's output matches the skill's description
+- Removes the dependency on your memory
+
+**What a good verification skill does:**
+1. Runs the test suite
+2. Reads the diff
+3. Checks that no test was weakened just to make things pass
+4. Reports pass/fail with evidence attached
+
+**Rule:** "Done" = gates run and results stated explicitly — not "the code looks right from the diff"
+
+**A skill folder can hold more than instructions** — scripts, reference data, templates, etc.
+
+**Rule of thumb:** If you've typed the same multi-step instruction twice → that's a skill.
+
+---
+
+### Permission Modes
+
+Six modes (shift-tab cycles through main ones; status bar always shows current mode):
+
+| Mode | What runs freely | What asks |
+|------|-----------------|-----------|
+| **Manual** | Reads only | Everything else |
+| **Accept edits** | Reads + file edits + common filesystem bash | Other bash commands |
+| **Plan** | Reads only (no edits) | — (just proposes, no execution) |
+| **Auto** | Everything (with classifier review per action) | Nothing |
+| **Don't ask** | Only pre-approved tools | Everything else auto-denied |
+| **Bypass permissions** | Everything (no checks) | Nothing (dangerous!) |
+
+**Auto mode — how it works:**
+- Classifier model reviews each action before execution
+- Guards intent: blocks actions that escalate beyond what you asked for
+- Blocks: production deploys, migrations, destructive filesystem operations, unusual network calls
+- Does NOT judge correctness of the code — only guards dangerous actions
+- Use auto for hands-off runs; use bypass only inside an isolated container/VM
+
+---
+
+### Hooks
+
+**What hooks are:** deterministic code that runs at a fixed point in the agentic loop — guarantees behavior instead of hoping for it.
+
+**CLAUDE.md vs hooks:** CLAUDE.md = polite request; Hook = Claude literally cannot skip it.
+
+**~30 hook events. Most important ones:**
+
+| Event | When it fires | Use for |
+|-------|--------------|---------|
+| **PreToolUse** | Before any tool call | Enforcement/blocking (can stop the action) |
+| **PostToolUse** | After successful tool call | Auto-format, auto-lint |
+| **Stop** | When Claude wants to end its turn | Refuse to end until conditions met |
+| **SubagentStop** | When a sub-agent finishes | Same as Stop but for sub-agents |
+| **PreCompact / PostCompact** | Before/after compaction | Context preservation |
+| **InstructionsLoaded** | When CLAUDE.md loads | Audit what made it into context |
+| **SessionStart** | Session start | Environment priming |
+
+**Important:** To re-inject context after compaction, use **SessionStart with compact matcher** (not PostCompact) — only SessionStart gets output back into the conversation.
+
+**PreToolUse returns a decision** — can approve, block, or modify the action before execution.
+
+---
+
+### Routines and Headless Mode
+
+**Routines (Anthropic-managed infrastructure):**
+- Bundle: prompt + repository + connectors + schedule
+- Runs in the cloud — no machine of yours stays on, no workflow file to maintain
+- **Trigger types:** cron schedule, HTTP POST to API endpoint, GitHub event (e.g., new PR)
+- Create at \`claude.ai/code/routines\` or from inside Claude Code terminal
+- Good for: morning dependency audit, PR triager, daily Sentry ticket scan
+
+**Headless mode:**
+- Run Claude Code from your own scripts (full control)
+- Use Agent SDK for programmatic integration
+- Spectrum: Routines (least to build) → Headless (most control)
+
+---
+
+### GitHub Actions and Code Review
+
+**Managed Code Review (Anthropic-hosted):**
+- Installed via Claude GitHub app; enabled by org admin in Claude Code admin settings
+- Analyzes diff against full codebase (not just changed lines)
+- Posts inline comments on specific lines with severity tags + summary table
+- Deduplicates findings → reads as a handful of real issues, not a wall of nitpicks
+- **Trigger options:** on PR open, on every push, or only when \`@claude review\` is commented
+- **Hard limits:** never approves or blocks a PR (judgment stays with human); no managed autofix
+
+**Custom GitHub Action path:**
+- Wire up yourself for full control
+- Useful when you need custom triggers or behavior beyond what managed service offers
+
+---
+
+### Verifying Unsupervised Runs
+
+**Core principle:** Verify in proportion to how much you watched. The less you watched → the more you verify.
+
+**Steps for unattended run verification:**
+1. **Start with the diff, not the summary** — run \`/code-review\` then \`git diff\`
+   - Summaries can read perfectly while the diff touched unexpected files
+   - Summary ≠ proof of clean code; diff = what actually changed
+2. **Check files outside the plan** — read everything in scope first, then look for surprises
+3. **Enforce tests via hook** — don't trust that Claude ran them; wire a hook so it can't skip
+4. **Keep unattended runs in auto mode** (not bypass) — classifier still guards dangerous actions
+
+---
+
+### Plugins
+
+**What a plugin bundles:** skills + subagents + hooks + MCP server configs + LSP servers + background monitors + themes + settings.json slice
+
+**Why plugins over manual file copying:** one installable unit, versioned, updates centrally
+
+**Team setup:** add a private marketplace once → all installs resolve through it; centralized discovery + version tracking
+
+**Security warning:** A plugin runs with your privileges. Its hooks fire on every matching tool call. Read the hooks before installing any community plugin — a malicious Stop hook could call out to a network endpoint on every turn.
+
+
+---
+
+## Prerequisite Course: AI Fluency: Framework & Foundations
+
+> Official Skilljar course — the 4D framework, GenAI fundamentals, capabilities/limitations, responsible use.
+
+### Three Modes of AI Engagement
+
+- **Automation** — AI executes specific tasks based on your instructions; you define the task, AI completes it
+- **Augmentation** — You and AI collaborate as creative thinking and task execution partners; back-and-forth partnership
+- **Agency** — You configure AI to work independently on your behalf; you shape its knowledge and behavior patterns rather than giving specific tasks each time
+
+---
+
+### The 4D AI Fluency Framework
+
+Developed through research collaboration: Prof. Rick Dakan (Ringling College) + Prof. Joseph Feller (University College Cork)
+
+**AI Fluency** = engaging with AI in ways that are **effective, efficient, ethical, and safe**
+
+The four competencies apply across all three engagement modes (Automation, Augmentation, Agency):
+
+| Competency | What it covers |
+|-----------|----------------|
+| **Delegation** | Deciding what work to do yourself vs. with AI vs. let AI do independently |
+| **Description** | Communicating clearly and effectively with AI systems |
+| **Discernment** | Evaluating AI outputs and behaviors with a critical eye |
+| **Diligence** | Ensuring responsible, ethical, transparent AI collaboration |
+
+---
+
+### Generative AI Fundamentals
+
+**What makes modern LLMs possible — three factors:**
+1. **Algorithmic/architectural breakthroughs** — especially the transformer architecture
+2. **Vast training data** — billions of digital text examples
+3. **Dramatic increases in computational power**
+
+**Two-stage learning:**
+- **Pre-training** — analyzes patterns across billions of examples; learns language, world knowledge
+- **Fine-tuning** — learns to follow instructions, provide helpful responses, behave safely
+
+**Key concepts:**
+- **Context window** — maximum tokens the model can process at once; limits how much conversation/document history Claude "sees"
+- **Emergent capabilities** — abilities not explicitly trained but arising from scale
+- Generative AI *creates* new content (text, images, code) vs. just analyzing existing data
+
+---
+
+### Capabilities & Limitations
+
+**Current capabilities:**
+- Versatility across diverse language tasks without additional training per task
+- Maintains conversational context and flow
+- Connects with external tools (via APIs, MCP, etc.)
+- Strong at text processing, coding, reasoning, analysis
+
+**Current limitations:**
+- **Knowledge cutoff** — doesn't know events after training date
+- **Hallucinations** — can produce factually incorrect outputs confidently
+- **Context window constraints** — loses context beyond window limit
+- **Complex reasoning challenges** — can make logical errors on multi-step problems
+- Cannot verify its own outputs independently
+
+**Key principle:** Most effective applications combine human + AI strengths — humans provide critical thinking, judgment, creativity, and ethical oversight.
+
+---
+
+### Delegation (1st D)
+
+**Three components:**
+1. **Problem Awareness** — clearly understand your goals and the nature of the work before involving AI
+2. **Platform Awareness** — know what different AI systems can and can't do
+3. **Task Delegation** — strategically divide work between human and AI based on strengths
+
+**Key principles:**
+- Effective delegation requires both domain expertise AND understanding of AI capabilities
+- Goal isn't to automate everything — it's to create the most effective human-AI partnership for each task
+- Humans retain judgment for tasks requiring creativity, ethics, domain expertise, accountability
+
+---
+
+### Description (2nd D)
+
+**Three components:**
+1. **Product Description** — define what you want: outputs, format, audience, style
+2. **Process Description** — guide how the AI approaches the task (as important as specifying the end goal)
+3. **Performance Description** — define behavioral aspects: tone (concise/detailed), style (challenging/supportive), interaction mode
+
+**Key principles:**
+- AI can't read your mind — quality of results = quality of communication
+- Clear communication up front saves time and leads to better results
+- AI systems are interactive partners, not databases or vending machines
+
+---
+
+### Effective Prompting Techniques (under Description)
+
+**Six foundational techniques:**
+1. **Give context** — be specific about what you want, why you want it, relevant background
+2. **Show examples** — demonstrate desired output style or format (few-shot)
+3. **Specify constraints** — define format, length, tone, output requirements explicitly
+4. **Break complex tasks into steps** — guide AI through multi-step reasoning
+5. **Ask the AI to think first** — give space to work through reasoning before answering
+6. **Define role or tone** — specify how you want the AI to communicate and behave
+
+**Secret weapon:** Ask the AI itself to help improve your prompt
+
+**Prompting is iterative** — first response is a starting point; refine through conversation
+
+---
+
+### Discernment (3rd D)
+
+**Three components:**
+1. **Product Discernment** — evaluate quality of actual outputs: accuracy, appropriateness, coherence, relevance
+2. **Process Discernment** — assess how the AI arrived at its output: logical errors? attention gaps? inappropriate reasoning?
+3. **Performance Discernment** — evaluate whether the AI's communication style and behavior fit your needs
+
+**Key principles:**
+- Discernment is the flip side of Description — Description says what you want; Discernment evaluates whether you got it
+- Works with Description in a continuous feedback loop: describe → receive → evaluate → re-describe
+- Even advanced AI systems benefit from human judgment and oversight
+- Critical evaluation = one of the irreplaceable human contributions to human-AI partnership
+
+---
+
+### Diligence (4th D)
+
+**Three components:**
+1. **Creation Diligence** — thoughtful about which AI systems you choose and how you work with them
+2. **Transparency Diligence** — honest about AI's role in your work with everyone who needs to know
+3. **Deployment Diligence** — take responsibility for verifying and vouching for AI-assisted outputs you share
+
+**Key principles:**
+- Different contexts (personal, academic, professional) have different expectations for disclosure and verification
+- Thoughtful Diligence ensures AI collaborations are not only effective and efficient, but also ethical and safe
+- You own the outputs you share, regardless of AI's role in creating them
+
+---
+
+### Conclusion Summary
+
+- AI Fluency develops through **intentional practice** of the 4Ds — not overnight mastery
+- **Delegation**: human expertise and judgment remain the foundation
+- **Description**: bridges intentions and AI capabilities
+- **Discernment**: critical evaluation within system constraints
+- **Diligence**: accountability, transparency, responsibility
+- Most powerful outcomes: humans + AI building on each other's strengths
+- Framework designed to remain relevant as AI continues to evolve
+
 `;
 
 function mdToHtml(md) {
@@ -4365,6 +5249,8 @@ function mdToHtml(md) {
   for (const raw of lines) {
     const line = raw;
     // headings
+    if (/^##### /.test(line)) { closeUl(); closeTbl(); out += `<h5>${inline(line.slice(6))}</h5>`; continue; }
+    if (/^#### /.test(line))  { closeUl(); closeTbl(); out += `<h4>${inline(line.slice(5))}</h4>`; continue; }
     if (/^### /.test(line)) { closeUl(); closeTbl(); out += `<h3>${inline(line.slice(4))}</h3>`; continue; }
     if (/^## /.test(line))  { closeUl(); closeTbl(); out += `<h2>${inline(line.slice(3))}</h2>`; continue; }
     if (/^# /.test(line))   { closeUl(); closeTbl(); out += `<h1>${inline(line.slice(2))}</h1>`; continue; }
@@ -4399,11 +5285,94 @@ function mdToHtml(md) {
   closeUl(); closeTbl();
   return out;
 }
+function preprocessMD(md) {
+  // Strip Teaching/Watch Out/Checkpoint/Recap/Exercise + duration from Full Screen Content
+  return md.replace(
+    /\*\*\[S(\d+)\]\*\*\s+(?:Teaching|Watch\s*Out|WatchOut|Checkpoint|Recap|Exercise|Cumulative)[\w\s]*?\d+\s*min[·\s·]*([^\n]+)/g,
+    function(match, id, content) {
+      const icon = /watch\s*out/i.test(match) ? '⚠️' :
+                   /\bcheckpoint\b/i.test(match) ? '✅' :
+                   /\brecap\b/i.test(match) ? '📋' :
+                   (/\bexercise\b/i.test(match) || /\bcumul/i.test(match)) ? '✏️' : '📘';
+      const text = (content || '').trim();
+      if (!text) return match;
+      // Extract title: up to first colon, or word boundary near char 50
+      let title, bodyText;
+      const colPos = text.indexOf(': ');
+      const spaceAt = text.lastIndexOf(' ', 52);
+      if (colPos > 5 && colPos < 55) {
+        title = text.substring(0, colPos).trim();
+        bodyText = text.substring(colPos + 2).trim();
+      } else if (spaceAt > 10) {
+        title = text.substring(0, spaceAt).trim();
+        bodyText = text.substring(spaceAt).trim();
+      } else {
+        title = text.substring(0, 50).trim();
+        bodyText = text.substring(50).trim();
+      }
+      // Split body into bullet sentences
+      const bullets = bodyText
+        .replace(/([.!?])\s+([A-Z"'])/g, '$1\n$2')
+        .split('\n')
+        .map(s => s.trim())
+        .filter(s => s.length > 8)
+        .slice(0, 5);
+      let out = '\n#### ' + icon + ' [S' + id + '] ' + title + '\n';
+      if (bullets.length > 0) {
+        out += bullets.map(b => '- ' + b).join('\n') + '\n';
+      }
+      return out;
+    }
+  );
+}
+
+function addChapterNav(bodyEl) {
+  const headings = bodyEl.querySelectorAll('h2');
+  if (headings.length < 2) return;
+  const chapters = [];
+  headings.forEach(function(h) {
+    const text = h.textContent.trim();
+    const id = 'ch-' + text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 40);
+    h.id = id;
+    chapters.push({id: id, text: text, el: h});
+  });
+  // Insert "Next Chapter" link before each h2 except the first
+  for (let i = 1; i < chapters.length; i++) {
+    const a = document.createElement('a');
+    a.href = '#' + chapters[i].id;
+    a.className = 'next-ch-btn';
+    const t = chapters[i].text.replace(/\s*\([^)]*\)/g, '').replace(/\s*—.*/g, '').trim();
+    a.textContent = 'Next: ' + (t.length > 38 ? t.substring(0, 38) + '…' : t) + ' →';
+    chapters[i].el.before(a);
+  }
+  // Build sticky chapter nav at top
+  const nav = document.createElement('div');
+  nav.className = 'ch-nav-bar';
+  chapters.forEach(function(ch, i) {
+    const a = document.createElement('a');
+    a.href = '#' + ch.id;
+    a.className = 'ch-nav-btn';
+    const t = ch.text.replace(/\s*\([^)]*\)/g, '').replace(/\s*—.*/g, '').trim();
+    a.textContent = (i + 1) + '. ' + (t.length > 20 ? t.substring(0, 20) + '…' : t);
+    nav.appendChild(a);
+  });
+  bodyEl.prepend(nav);
+}
+
 function renderCheatsheet() {
   const el = document.getElementById('cheatsheet-body');
   if (!el || el.dataset.loaded) return;
   el.dataset.loaded = '1';
-  el.innerHTML = mdToHtml(CHEATSHEET_MD);
+  el.innerHTML = mdToHtml(preprocessMD(CHEATSHEET_MD));
+  addChapterNav(el);
+}
+
+function renderBlueprint() {
+  const el = document.getElementById('blueprint-body');
+  if (!el || el.dataset.loaded) return;
+  el.dataset.loaded = '1';
+  el.innerHTML = mdToHtml(BLUEPRINT_MD);
+  addChapterNav(el);
 }
 
 // ===== Final Check =====
