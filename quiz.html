@@ -983,7 +983,7 @@
     #cheatsheet-body em { color:#a5b4fc; font-style:italic; }
     #cheatsheet-body code { background:#1e293b; color:#f472b6; padding:1px 4px; border-radius:3px; font-size:0.85em; }
     #cheatsheet-body br { display:block; margin:4px 0; }
-    #cheatsheet-body h4 { font-size:0.87em; color:#fde68a; margin:10px 0 2px; }
+    #cheatsheet-body h4 { font-size:0.87em; color:#fde68a; margin:20px 0 6px; border-bottom:1px solid #1e293b; padding-bottom:3px; }
     #cheatsheet-body h5 { font-size:0.83em; color:#f9a8d4; margin:8px 0 1px; }
     .ch-nav-bar { display:flex; flex-wrap:wrap; gap:5px; margin:0 0 14px; padding:8px 0 10px; border-bottom:1px solid var(--border); }
     .ch-nav-btn { background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:16px; padding:4px 11px; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; text-decoration:none; display:inline-block; }
@@ -5678,7 +5678,7 @@ function mdToHtml(md) {
     const line = raw;
     // headings
     if (/^##### /.test(line)) { closeUl(); closeTbl(); out += `<h5>${inline(line.slice(6))}</h5>`; continue; }
-    if (/^#### /.test(line))  { closeUl(); closeTbl(); out += `<h4>${inline(line.slice(5))}</h4>`; continue; }
+    if (/^#### /.test(line))  { closeUl(); closeTbl(); const _h4c = line.slice(5); const _h4s = _h4c.startsWith('⚠️') ? ' style="color:#fb923c"' : _h4c.startsWith('✅') ? ' style="color:#4ade80"' : _h4c.startsWith('📋') ? ' style="color:#c4b5fd"' : _h4c.startsWith('✏️') ? ' style="color:#93c5fd"' : ''; out += `<h4${_h4s}>${inline(_h4c)}</h4>`; continue; }
     if (/^### /.test(line)) { closeUl(); closeTbl(); out += `<h3>${inline(line.slice(4))}</h3>`; continue; }
     if (/^## /.test(line))  { closeUl(); closeTbl(); out += `<h2>${inline(line.slice(3))}</h2>`; continue; }
     if (/^# /.test(line))   { closeUl(); closeTbl(); out += `<h1>${inline(line.slice(2))}</h1>`; continue; }
@@ -5714,41 +5714,93 @@ function mdToHtml(md) {
   return out;
 }
 function preprocessMD(md) {
-  // Strip Teaching/Watch Out/Checkpoint/Recap/Exercise + duration from Full Screen Content
   return md.replace(
-    /\*\*\[S(\d+)\]\*\*\s+(?:Teaching|Watch\s*Out|WatchOut|Checkpoint|Recap|Exercise|Cumulative)[\w\s]*?\d+\s*min[·\s·]*([^\n]+)/g,
-    function(match, id, content) {
-      const icon = /watch\s*out/i.test(match) ? '⚠️' :
-                   /\bcheckpoint\b/i.test(match) ? '✅' :
-                   /\brecap\b/i.test(match) ? '📋' :
-                   (/\bexercise\b/i.test(match) || /\bcumul/i.test(match)) ? '✏️' : '📘';
-      const text = (content || '').trim();
+    /\*\*\[S(\d+)\]\*\*\s+((?:Teaching|Watch\s*Out|WatchOut|Checkpoint|Recap|Exercise|Cumulative)[\w\s]*?)\d+\s*min[·\s·]*([^\n]+)/g,
+    function(match, id, typeStr, rawContent) {
+      const isWatchOut  = /watch\s*out/i.test(typeStr);
+      const isCheckpoint = /\bcheckpoint\b/i.test(typeStr);
+      const isRecap     = /\brecap\b/i.test(typeStr);
+      const isExercise  = /\bexercise\b|\bcumul/i.test(typeStr);
+      const icon = isWatchOut ? '⚠️' : isCheckpoint ? '✅' : isRecap ? '📋' : isExercise ? '✏️' : '📘';
+
+      const text = (rawContent || '').trim();
       if (!text) return match;
-      // Extract title: up to first colon, or word boundary near char 50
+
+      // Clip title before numbered claims or "Setup hook" body markers
+      const firstNumInText = text.search(/\b0[1-9]\s+[A-Z]/);
+      const setupHookIdx   = text.search(/\bSetup hook\b/i);
+      const markerIdx = [firstNumInText, setupHookIdx].filter(i => i > 15).sort((a,b)=>a-b)[0];
+      const maxTitlePos = markerIdx != null ? markerIdx : Infinity;
+
+      // Title extraction: prefer colon boundary, else break at ≤ 65 chars
       let title, bodyText;
-      const colPos = text.indexOf(': ');
-      const spaceAt = text.lastIndexOf(' ', 52);
-      if (colPos > 5 && colPos < 55) {
-        title = text.substring(0, colPos).trim();
-        bodyText = text.substring(colPos + 2).trim();
-      } else if (spaceAt > 10) {
-        title = text.substring(0, spaceAt).trim();
-        bodyText = text.substring(spaceAt).trim();
+      const colonPos = text.indexOf(': ');
+      if (colonPos > 5 && colonPos < Math.min(60, maxTitlePos)) {
+        title = text.substring(0, colonPos).trim();
+        bodyText = text.substring(colonPos + 2).trim();
       } else {
-        title = text.substring(0, 50).trim();
-        bodyText = text.substring(50).trim();
+        const brkAt = Math.min(65, isFinite(maxTitlePos) ? maxTitlePos : text.length);
+        const lastSp = text.lastIndexOf(' ', brkAt);
+        const boundary = lastSp > 10 ? lastSp : Math.min(50, brkAt);
+        title = text.substring(0, boundary).trim();
+        bodyText = text.substring(boundary).trim();
       }
-      // Split body into bullet sentences
+
+      let out = '\n#### ' + icon + ' [S' + id + '] ' + title + '\n\n';
+
+      // ── Numbered-claims path: "01 Bold claim. Explanation…  02 …" ──
+      const firstNumIdx = bodyText.search(/\b0[1-9]\s+[A-Z]/);
+      if (firstNumIdx !== -1) {
+        const preText = bodyText.substring(0, firstNumIdx).trim();
+        if (preText.length > 10) out += '*' + preText.replace(/\.$/, '') + '*\n\n';
+        const claimsText = bodyText.substring(firstNumIdx);
+        // Split at each "0N Capital" boundary (lookahead keeps delimiter)
+        const parts = claimsText.split(/(?=\b0[1-9]\s+[A-Z])/);
+        for (const part of parts) {
+          const m = part.match(/^(0[1-9])\s+([\s\S]+)/);
+          if (!m) continue;
+          const body = m[2].trim();
+          const dotIdx = body.indexOf('.');
+          if (dotIdx > 0 && dotIdx < 130) {
+            const claim = body.substring(0, dotIdx + 1);
+            const expl  = body.substring(dotIdx + 1).trim();
+            out += '**' + m[1] + ' ' + claim + '**' + (expl ? ' ' + expl : '') + '\n\n';
+          } else {
+            out += '**' + m[1] + '** ' + body + '\n\n';
+          }
+        }
+        return out;
+      }
+
+      // ── Watch Out path: split on Setup-hook vs. postmortem story ──
+      if (isWatchOut) {
+        const storyIdx = bodyText.search(
+          /\b(?:A reconstructed|A scoping|A composite|A handoff|A monthly|The trace|The conversation below|The diagram below|The three quotes|90 days after|A regional)\b/i
+        );
+        if (storyIdx > 20) {
+          const hook  = bodyText.substring(0, storyIdx).trim();
+          const story = bodyText.substring(storyIdx).trim();
+          const hookBullets = hook
+            .replace(/^Setup hook\s*/i, '')
+            .replace(/([.!?])\s+([A-Z"'])/g, '$1\n$2').split('\n')
+            .map(s => s.trim()).filter(s => s.length > 8);
+          out += hookBullets.map(b => '- ' + b).join('\n') + '\n\n';
+          const storyBullets = story
+            .replace(/([.!?])\s+([A-Z"'])/g, '$1\n$2').split('\n')
+            .map(s => s.trim()).filter(s => s.length > 8).slice(0, 4);
+          if (storyBullets.length) out += storyBullets.map(b => '- ' + b).join('\n') + '\n';
+          return out;
+        }
+      }
+
+      // ── Default: sentence-split into bullets (max 7) ──
       const bullets = bodyText
         .replace(/([.!?])\s+([A-Z"'])/g, '$1\n$2')
         .split('\n')
         .map(s => s.trim())
         .filter(s => s.length > 8)
-        .slice(0, 5);
-      let out = '\n#### ' + icon + ' [S' + id + '] ' + title + '\n';
-      if (bullets.length > 0) {
-        out += bullets.map(b => '- ' + b).join('\n') + '\n';
-      }
+        .slice(0, 7);
+      if (bullets.length > 0) out += bullets.map(b => '- ' + b).join('\n') + '\n';
       return out;
     }
   );
