@@ -652,6 +652,26 @@
   }
   .notes-body hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
   .notes-body strong { color: var(--text); font-weight: 600; }
+  .notes-body details.cs-collapse {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin: 10px 0;
+    background: var(--panel-2);
+    overflow: hidden;
+  }
+  .notes-body details.cs-collapse summary {
+    cursor: pointer;
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 0.9em;
+    color: var(--accent);
+    list-style: none;
+  }
+  .notes-body details.cs-collapse summary::-webkit-details-marker { display: none; }
+  .notes-body details.cs-collapse summary::before { content: '▸ '; display: inline-block; transition: transform 0.15s; }
+  .notes-body details.cs-collapse[open] summary::before { transform: rotate(90deg); }
+  .notes-body details.cs-collapse > *:not(summary) { padding: 0 14px 12px; }
+  .notes-body details.cs-collapse table { margin-top: 0; }
   .notes-body em { color: var(--muted); }
 
   /* Sticky TOC */
@@ -3879,26 +3899,37 @@ document.getElementById('back-to-top').addEventListener('click', () => {
 
 // ===== Progress view =====
 const OBJ_LABELS = {
-  'D1.1.1':'Translate business → AI scope','D1.1.2':'Lifecycle & success metrics','D1.1.3':'Architecture patterns',
-  'D1.1.4':'Multi-agent design','D1.1.5':'HITL & risk placement','D1.1.6':'Model selection & cost',
-  'D2.2.1':'Model selection','D2.2.2':'Context management','D2.2.3':'Prompt techniques',
-  'D2.2.4':'Long-session context','D2.2.5':'Skill & prompt reuse',
-  'D3.3.1':'Tool design','D3.3.2':'Auth & authorization','D3.3.3':'Data handling',
-  'D3.3.4':'Observability & tracing','D3.3.5':'RAG & chunking','D3.3.6':'Retrieval strategy',
-  'D3.3.7':'MCP integration','D3.3.8':'Progressive context',
-  'D4.4.1':'Metric selection','D4.4.2':'Evaluation methods','D4.4.3':'Production testing',
-  'D4.4.4':'A/B & shadow','D4.4.5':'Debugging','D4.4.6':'Optimization',
-  'D5.5.1':'Risk identification','D5.5.2':'Safety controls','D5.5.3':'Auth & data protection',
-  'D5.5.4':'Responsible deployment','D5.5.5':'Fairness & transparency',
-  'D6.6.1':'Stakeholder engagement','D6.6.2':'Expectation management','D6.6.3':'Lifecycle gates',
-  'D6.6.4':'Change management','D6.6.5':'Documentation',
-  'D7.7.1':'Claude Code setup','D7.7.2':'Agentic coding','D7.7.3':'Verification & debug'
+  'D1.1':'Decomposition & ownership split','D1.2':'Production readiness gates','D1.3':'Pattern selection',
+  'D1.4':'Multi-agent justification','D1.5':'Decomposition for diagnosability','D1.6':'Constraint-driven tradeoffs',
+  'D1.7':'Retrieval vs. live state','D1.8':'Capability & tool scoping','D1.9':'Workflow vs. agent fit',
+  'D1.10':'Multi-agent vs. single-agent','D1.11':'Pattern-to-scenario matching',
+  'D2.1':'Per-step model selection','D2.2':'Prompt vs. enforced control','D2.3':'Prompt technique selection',
+  'D2.4':'Long-session context management','D2.5':'Prompt & Skill reuse','D2.6':'Context loading strategy',
+  'D2.7':'Prompt caching','D2.8':'System prompt consistency',
+  'D3.1':'Tool surface & discovery','D3.2':'Authorization patterns','D3.3':'Accuracy-latency tradeoffs',
+  'D3.4':'Observability instrumentation','D3.5':'Chunking & context loss','D3.6':'Retrieval strategy matching',
+  'D3.7':'MCP vs. direct integration','D3.8':'Progressive vs. monolithic context','D3.9':'Index freshness',
+  'D3.10':'Tool selection accuracy','D3.11':'Progressive discovery tradeoffs','D3.12':'Connection mechanism selection',
+  'D4.1':'Eval tradeoff analysis','D4.2':'Grader calibration','D4.3':'Pre-rollout gates',
+  'D4.4':'Failure diagnosis matching','D4.5':'Cost optimization','D4.6':'Trace completeness',
+  'D4.7':'Quality drift detection','D4.8':'Eval framework design','D4.9':'Intermittent failure diagnosis',
+  'D4.10':'System issue classification',
+  'D5.1':'Prompt-only enforcement gaps','D5.2':'Risk category classification','D5.3':'Review routing design',
+  'D5.4':'Data erasure completeness','D5.5':'Fairness & disparate impact','D5.6':'Regulatory transparency',
+  'D5.7':'Compliance evidence','D5.8':'Prompt injection defense','D5.9':'Risk-control matching',
+  'D6.1':'Discovery requirements','D6.2':'Design rationale','D6.3':'SLA definition',
+  'D6.4':'Handoff completeness','D6.5':'Lifecycle stage matching','D6.6':'Business outcome reporting',
+  'D6.7':'Discovery phase outputs','D6.8':'Scope change management','D6.9':'Lifecycle phase classification',
+  'D7.1':'Config enforcement hierarchy','D7.2':'Productivity metric validity','D7.3':'Recurring failure debugging',
+  'D7.4':'Team tooling governance'
 };
 
-function topicToObjKey(topic) {
-  const m = topic.match(/^(D\d+)\s*[—-]\s*(\d+)\.(\d+)/);
-  if (!m) return null;
-  return m[1] + '.' + m[2] + '.' + m[3];
+function topicToObjKey(topic, domain) {
+  // Handles both "D1 — 1.1 ..." (newer questions) and bare "1.1 — ..." (Q001-Q200,
+  // domain given separately via q.domain) topic string formats.
+  const m = topic.match(/^(?:D\d+\s*[—-]\s*)?\d+\.(\d+)/);
+  if (!m || !domain) return null;
+  return domain + '.' + m[1];
 }
 
 function renderProgress() {
@@ -3937,7 +3968,7 @@ function renderProgress() {
   const objStats = {};
   Object.keys(OBJ_LABELS).forEach(k => { objStats[k] = {t:0,c:0,ans:0}; });
   QUESTIONS.forEach(q => {
-    const key = topicToObjKey(q.topic || '');
+    const key = topicToObjKey(q.topic || '', q.domain);
     if (!key || !objStats[key]) return;
     objStats[key].t++;
     const p = progress[q.id];
@@ -3947,9 +3978,8 @@ function renderProgress() {
     const s = objStats[key];
     const pctV = s.ans ? Math.round(100*s.c/s.ans) : null;
     const cls = pctV === null ? 'heat-none' : pctV >= 75 ? 'heat-ok' : pctV >= 50 ? 'heat-mid' : 'heat-low';
-    const shortId = key.replace(/(\w+)\.(\d+)\.(\d+)/, '$1.$3');
     return `<div class="obj-cell ${cls}" title="${OBJ_LABELS[key]} (${s.ans}/${s.t} done)">
-      <div class="obj-id">${shortId}</div>
+      <div class="obj-id">${key}</div>
       <div class="obj-pct">${pctV !== null ? pctV+'%' : '—'}</div>
       <div class="obj-count">${s.ans}/${s.t}</div>
     </div>`;
@@ -4030,7 +4060,7 @@ function renderProgress() {
       </div>
     </div>
     <div class="progress-row">
-      <h3>38-Objective Mastery Heatmap <span style="font-size:11px;color:var(--muted);font-weight:400">— green ≥75% · yellow 50–74% · red &lt;50%</span></h3>
+      <h3>63-Objective Mastery Heatmap <span style="font-size:11px;color:var(--muted);font-weight:400">— green ≥75% · yellow 50–74% · red &lt;50%</span></h3>
       <div class="obj-heatmap">${heatmapCells}</div>
     </div>
     <div class="progress-row">
@@ -4065,6 +4095,202 @@ const BLUEPRINT_MD = `# CCAR-P — Official Exam Blueprint
 | D6 | Stakeholder Communication & Lifecycle Management | **14%** | ~9 |
 | D7 | Developer Productivity & Operational Enablement | **7%** | ~4 |
 
+---
+
+## 🎯 Key Areas to Focus
+
+*Priority order by official exam weight (see the domain-weight table above) — study the heaviest-weighted modules first. Each "if you remember one thing" line is the module's own #1 Recap takeaway.*
+
+| Priority | Module | Domain(s) | Weight | If you remember one thing |
+|----------|--------|-----------|--------|----------------------------|
+| 1 | M2 — Enterprise Integration & Production | D3 + D4 | **35%** (19%+16%) | Evals as acceptance criteria — write the eval suite before the production code, and use it as the gate for every model swap or prompt revision |
+| 2 | M1 — Claude Platform & Solution Design | D1 + D2 | **30%** (17%+13%) | Decomposition comes before architecture — split work into what Claude handles, what existing systems handle, what humans handle |
+| 3 | M3 — Responsible AI, Safety & Risk | D5 | **14%** | Safety is a stack of layers, not a setting — draw the boundary explicitly; the dangerous failure is assuming Claude enforces a rule that lives in no layer |
+| 3 | M4 — Stakeholder Engagement, Lifecycle & GTM | D6 | **14%** | Structured discovery — translate every stakeholder preference into a constraint, traced to the business case, not your technical preference |
+| 5 | M5 — Team Enablement & Operational Productivity | D7 | **7%** | Team setup is shared configuration, distribution, and spend posture — decided up front |
+
+**Reading order for this tab:** Domain weights (above) → Module Map (what each module covers) → Learning Outcomes (what the exam measures) → Key Takeaways (the exact exam-tested rules, one card per module) → Full Lesson Breakdown (every lesson title, collapsed by module — expand for cross-reference) → per-domain deep dive (D1–D7 below) → High-Frequency Exam Patterns → Official Sample Questions. For the full screen-by-screen course transcript, see the Revision tab.
+
+---
+
+## Official Prep Course — Module Map
+
+*5 modules · 733 min total · directly maps to exam domains*
+
+| Module | Duration | What you learn | Domains |
+|--------|----------|----------------|---------|
+| Claude Platform & Solution Design | 238 min | Architecture, model selection, context strategy, entry points — translate ambiguous problem → defensible solution | D1, D2 |
+| Enterprise Integration & Production | 158 min | PoC → production: cost, latency, reliability budgets + enterprise integration patterns | D3, D4 |
+| Responsible AI, Safety & Risk for Architects | 114 min | Full safety stack: input screening, output screening, tool-call authorization, fail-closed design | D5 |
+| Stakeholder Engagement, Lifecycle & GTM | 178 min | Discovery, trade-off presentation, handoff design, adoption that outlasts you | D6 |
+| Team Enablement & Operational Productivity | 45 min | Config, rollout, developer workflows, operational issue resolution | D7 |
+
+**Prerequisites assumed by exam:** Claude 101 · Claude Code in Action · AI Fluency: Framework & Foundations · Building with the Claude API · Intro to MCP · AI Capabilities & Limitations
+
+---
+
+## Official Learning Outcomes (what the exam measures)
+
+By exam time you must be able to:
+
+- **Translate ambiguity → architecture** — Select reference architecture, model, context strategy, and entry point that keep a solution accurate and cost-conscious
+- **PoC → production** — Map cost, latency, reliability to a budget; specify integration patterns an enterprise will accept
+- **Design the safety stack** — Place input screening, output screening, tool-call authorization so the system **fails closed, not open**
+- **Evals as the gate** — Build evaluations as acceptance criteria used before any model or architecture change
+- **Governance routing** — Route decisions by confidence, reversibility, cost; map each compliance obligation to a named control + owner + evidence artifact
+- **Stakeholder communication** — Run structured discovery; present trade-offs non-technical stakeholders can act on; design a handoff that survives your absence
+- **Team enablement** — Enable a team to adopt and operate a live system: shared config, rollout, developer workflows, issue resolution without depending on you
+
+---
+
+## Official Prep Course — Module Key Takeaways
+
+*Sourced directly from each module's Recap screen — exact exam-tested rules*
+
+### M1 — Claude Platform & Solution Design (D1 + D2)
+
+**01 Decomposition comes before architecture.** Split work into three buckets: what Claude handles, what existing systems handle, what humans handle. The split is driven by how the model behaves on each piece. Designs that skip this step force Claude into work another system would do at lower cost.
+
+**02 Choosing a pattern = choosing autonomy.** Augmented LLM → workflow → agent is a spectrum from "Claude assists one step" to "Claude plans the whole sequence." Decision factors: predictability, error cost, reversibility, latency tolerance, context availability.
+
+**03 Don't use retrieval as a substitute for live state.** Retrieval is built for static documents and stale snapshots — not for conversations that need live data. Most common mistake: retrieval index used where a live API call was needed.
+
+**04 Start with Sonnet; treat every model swap as a release.** Define what "better" means with an eval set before the swap, and set rollback criteria before — not after. Progressive context (model receives only what it needs at each step) outperforms monolithic context at scale.
+
+**05 Pick entry point by the work it has to do, not what's already on the shelf.** claude.ai / API / operators / MCP each define a different trust boundary. The entry point determines who can see and override the system prompt, which determines the governance posture.
+
+---
+
+### M2 — Enterprise Integration & Production (D3 + D4)
+
+**01 Evals as acceptance criteria.** Write the eval suite before the production code. Keep the golden dataset current with every system change. Use the eval as the gate for every model swap or prompt revision — not just at launch.
+
+**02 POC → production.** Estimate cost and latency at production volume before committing to architecture. Build retries, fallback chains, and circuit breakers into the initial design. Name the failure mode specific to your architecture type and document the mitigation.
+
+**03 Use-case sizing and feasibility.** Run every new use case through the four AI properties before issuing a feasibility verdict. State the verdict in exactly one of three forms: *feasible as scoped* / *feasible with constraints* / *not feasible*. Document the load-bearing boundary condition for every constrained verdict.
+
+**04 Enterprise integration patterns.** Enforce identity at the server side. Pass only the minimum necessary data into the context window. Build observability instrumentation into the integration layer from day one — not as a retrofit.
+
+**05 A/B testing and observability.** Identify the primary metric and sample size before running any experiment. At scale, separate per-request observability from aggregate dashboards. Build a translation layer that maps technical metrics (latency, error rate) to business metrics the stakeholder cares about.
+
+---
+
+### M3 — Responsible AI, Safety & Risk (D5)
+
+**01 Safety is a stack of layers, not a setting.** Training reduces broad harm for every request but never saw your partner's domain policy, data rules, or authorization model — draw the boundary explicitly and identify what each layer covers. The dangerous failure is *silent*: assuming Claude enforces a rule that doesn't live in any layer.
+
+**02 A guarded path has three control points and a chosen failure direction.** Input screening, output screening, and tool-call authorization answer different questions — only one filter at the end does not cover the other two. Let control errors fail **closed** (not open) for decisions where a wrong pass causes harm.
+
+**03 Fairness and transparency are instrumented, not assumed.** Unequal outcomes arise at points you control: corpus composition, prompt framing, examples, routing logic. Treating fairness as a post-hoc audit misses where you can actually intervene.
+
+**04 Route review by stakes, not by volume.** Confidence, reversibility, and cost of a wrong answer determine which decisions a person should review. Send high-stakes, low-confidence decisions to a human with the inputs and the flag reason. Routing everything floods the queue until reviewers click through without reading.
+
+**05 A compliant entry point is a prerequisite; an evidenced control set is the proof.** A regulation states an outcome and leaves you the control — turn each obligation into a named control with an owner, a measurement method, and an evidence artifact. An auditable trail requires both the control and the proof it ran.
+
+---
+
+### M4 — Stakeholder Engagement, Lifecycle & GTM (D6)
+
+**01 Structured discovery.** Run discovery as a four-category process: what the system *must do*, what it *must not do*, what it *must cost*, and *when* it must deliver. Translate every stakeholder preference into a constraint. Write each item as a requirement row with its assumption labeled — so the design traces to the business case, not to your own technical preference.
+
+**02 Communicating tradeoffs.** Present every tradeoff as a package with three elements: the options considered, the criteria you weighed them against, your recommendation — and the *reversal cost* if the decision is undone. The stakeholder is accepting a decision they will have to defend to their own leadership.
+
+**03 Feedback loops and SLA management.** Build the decision layer that maps signals → trigger actions → owners. Set SLA thresholds from their real sources (not from what the dashboard makes easy to export). Wire regulated checkpoints to run on a schedule — compliance checkpoints that aren't wired to a trigger can run for weeks undetected.
+
+**04 Documentation for handoff and audit.** Write the decision, the rejected alternatives, and the tradeoff each resolved *while you still hold the reasoning*. Carry the control register forward as evidence a reviewer will accept. A design without its rationale cannot be safely changed.
+
+**05 Entry point selection and outcomes.** Choose the route on latency, compliance, and cost. For multi-entry-point designs, build an entry-point-responsibility map. Capture the *before* metric, the auditable control, and the reuse note — so the outcome document can justify expansion to a CFO's first question.
+
+---
+
+### M5 — Team Enablement & Operational Productivity (D7)
+
+**01 Team setup is shared configuration, distribution, and spend posture — decided up front.** Org-provisioned Skills for everyone; plugins for group/org targeting with versioned updates and rollback; project Skills for one team; API Skills for programmatic reuse — all bounded by model and budget guardrails set at provisioning time.
+
+**02 Adoption is engineered through champions and batches.** A champion per team proves the workflow and seeds adoption. Access without enablement stalls at basic chat. Lumpy adoption never standardizes the productivity gain.
+
+**03 Diligence keeps AI-assisted work trustworthy.** Hold AI-generated code to correctness, security, and maintainability standards. Require that the author can explain what shipped — captured as a verification checklist that gates work before production. "It passed tests" is not sufficient if the author cannot explain the logic.
+
+**04 Operational support = translation + self-sufficiency.** Connect symptoms to architecture so teams understand *why* something broke (translation). Build toward the team being able to diagnose and resolve without the architect — a deployment that requires you to fix every issue hasn't been fully handed over.
+
+---
+
+## Official Prep Course — Full Lesson Breakdown
+
+*Sourced directly from Skilljar after login — these are the exact lesson titles and focus areas*
+
+{{collapse: M1 · Claude Platform & Solution Design (D1 + D2 · 238 min · 12 sections)}}
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **How Claude Behaves** | 1 | Stateless API, no persistent memory by default, token-in/token-out |
+| 03 | **Platform Map & Primitives** | 4 | API vs. claude.ai vs. operators; system prompt, human turn, assistant turn |
+| 04 | **Decomposition** | 4 | What Claude owns vs. deterministic code; don't LLM what rules can decide |
+| 05 | **Pattern Selection** | 5 | Augmented LLM / Fixed workflow / Agentic loop / Multi-agent — pick by complexity |
+| 06 | **Reference Architectures** | 3 | Which architecture for which scenario — the most-tested D1 decision |
+| 07 | **RAG Pipeline Design** | 2 | Chunking, retrieval, reranking, index versioning, stale-index failure modes |
+| 08 | **Model & Context Strategy** | 3 | Model tiers, fast vs. strong routing, context window planning, caching |
+| 09 | **Prompting as Architecture** | 4 | System prompt structure, role, rules, output format as design decisions |
+| 10 | **Entry Points & Governance** | 3 | claude.ai / API / operators / MCP — entry point determines trust boundary |
+| 11 | Assembly & Recap | 3 | End-to-end walkthrough combining all four design decisions |
+| 12 | Module Complete | 1 | — |
+
+{{endcollapse}}
+{{collapse: M2 · Enterprise Integration & Production (D3 + D4 · 158 min · 8 sections)}}
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Evals** | 3 | Eval types: functional / LLM-as-judge / human; evals as release gates |
+| 03 | **POC to Prod** | 3 | Production checklist: traceability, versioning, fallbacks, monitoring |
+| 04 | **Sizing** | 3 | Cost/latency budget: model selection, token limits, caching economics |
+| 05 | **Integration** | 3 | Direct API vs. MCP vs. SDK; tool design, least-privilege tool exposure |
+| 06 | **A/B & Obs** | 3 | A/B testing prompt/model changes; observability: trace IDs, structured logs |
+| 07 | Exercise: Eval Framework | 1 | Applied exercise |
+| 08 | Wrap-up | 4 | Synthesis |
+
+{{endcollapse}}
+{{collapse: M3 · Responsible AI, Safety & Risk for Architects (D5 · 114 min · 8 sections)}}
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Alignment** | 3 | Constitutional AI, RLHF, why Claude refuses — not a prompt issue |
+| 03 | **Guardrails** | 5 | Input screening → output screening → tool-call authorization; fail-closed |
+| 04 | **Fairness** | 3 | Subgroup error rates, calibration, disparate impact detection |
+| 05 | **Review routing** | 3 | Route by: confidence, reversibility, cost, impact — not by volume alone |
+| 06 | **Compliance** | 3 | Data residency, GDPR/HIPAA, retention, audit trail — design-phase decisions |
+| 07 | Wrap-up | 4 | Synthesis |
+| 08 | Module Complete | 0 | — |
+
+{{endcollapse}}
+{{collapse: M4 · Stakeholder Engagement, Lifecycle & GTM (D6 · 178 min · 8 sections)}}
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Discovery** | 3 | Structured discovery: current workflow, pain, users, baseline, success criteria |
+| 03 | **Tradeoffs** | 3 | Present trade-offs non-technical stakeholders can act on; decision framing |
+| 04 | **Feedback Loops** | 3 | Structured feedback path: reviewer overrides → structured labels → eval set |
+| 05 | **Documentation** | 3 | Handoff docs that survive your absence: runbook, rationale, contact map |
+| 06 | **Entry Point** | 3 | GTM sequencing: pilot → measured rollout → production; who approves each gate |
+| 07 | Wrap-up | 4 | Synthesis |
+| 08 | Module Complete | 0 | — |
+
+{{endcollapse}}
+{{collapse: M5 · Team Enablement & Operational Productivity (D7 · 45 min · 6 sections)}}
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Team Setup** | 2 | Shared config, API key management, role-based access, onboarding |
+| 03 | **Dev Workflows** | 2 | Claude Code in practice, prompt iteration loops, code review integration |
+| 04 | **Ops Support** | 1 | Issue triage, escalation path, when to page vs. self-resolve |
+| 05 | Wrap-up | 3 | Synthesis |
+| 06 | Module Complete | 1 | — |
+
+{{endcollapse}}
 ---
 
 ## D1 — Solution Design & Architecture (17%)
@@ -4377,198 +4603,7 @@ const CHEATSHEET_MD = `# CCAR-P — Official Study Guide
 `;
 
 const REVISION_MD = `# Skilljar Course — Revision
-*Full official course content — module map, learning outcomes, key takeaways, screen-by-screen notes, and prerequisite course summaries. Sourced directly from Skilljar SCORM.*
-
-## 🎯 Key Areas to Focus
-
-*Priority order by official exam weight (see Blueprint tab for the full breakdown) — study the heaviest-weighted modules first. Each "if you remember one thing" line is the module's own #1 Recap takeaway.*
-
-| Priority | Module | Domain(s) | Weight | If you remember one thing |
-|----------|--------|-----------|--------|----------------------------|
-| 1 | M2 — Enterprise Integration & Production | D3 + D4 | **35%** (19%+16%) | Evals as acceptance criteria — write the eval suite before the production code, and use it as the gate for every model swap or prompt revision |
-| 2 | M1 — Claude Platform & Solution Design | D1 + D2 | **30%** (17%+13%) | Decomposition comes before architecture — split work into what Claude handles, what existing systems handle, what humans handle |
-| 3 | M3 — Responsible AI, Safety & Risk | D5 | **14%** | Safety is a stack of layers, not a setting — draw the boundary explicitly; the dangerous failure is assuming Claude enforces a rule that lives in no layer |
-| 3 | M4 — Stakeholder Engagement, Lifecycle & GTM | D6 | **14%** | Structured discovery — translate every stakeholder preference into a constraint, traced to the business case, not your technical preference |
-| 5 | M5 — Team Enablement & Operational Productivity | D7 | **7%** | Team setup is shared configuration, distribution, and spend posture — decided up front |
-
-**Reading order for this tab:** Module Map (what each module covers) → Learning Outcomes (what the exam measures) → Key Takeaways (the exact exam-tested rules, one card per module) → Full Lesson Breakdown (every lesson title, for cross-reference) → Full Screen Content (every Teaching / Watch Out / Checkpoint / Recap screen, for deep review) → Prerequisite Courses (assumed background knowledge).
-
----
-
-## Official Prep Course — Module Map
-
-*5 modules · 733 min total · directly maps to exam domains*
-
-| Module | Duration | What you learn | Domains |
-|--------|----------|----------------|---------|
-| Claude Platform & Solution Design | 238 min | Architecture, model selection, context strategy, entry points — translate ambiguous problem → defensible solution | D1, D2 |
-| Enterprise Integration & Production | 158 min | PoC → production: cost, latency, reliability budgets + enterprise integration patterns | D3, D4 |
-| Responsible AI, Safety & Risk for Architects | 114 min | Full safety stack: input screening, output screening, tool-call authorization, fail-closed design | D5 |
-| Stakeholder Engagement, Lifecycle & GTM | 178 min | Discovery, trade-off presentation, handoff design, adoption that outlasts you | D6 |
-| Team Enablement & Operational Productivity | 45 min | Config, rollout, developer workflows, operational issue resolution | D7 |
-
-**Prerequisites assumed by exam:** Claude 101 · Claude Code in Action · AI Fluency: Framework & Foundations · Building with the Claude API · Intro to MCP · AI Capabilities & Limitations
-
----
-
-## Official Learning Outcomes (what the exam measures)
-
-By exam time you must be able to:
-
-- **Translate ambiguity → architecture** — Select reference architecture, model, context strategy, and entry point that keep a solution accurate and cost-conscious
-- **PoC → production** — Map cost, latency, reliability to a budget; specify integration patterns an enterprise will accept
-- **Design the safety stack** — Place input screening, output screening, tool-call authorization so the system **fails closed, not open**
-- **Evals as the gate** — Build evaluations as acceptance criteria used before any model or architecture change
-- **Governance routing** — Route decisions by confidence, reversibility, cost; map each compliance obligation to a named control + owner + evidence artifact
-- **Stakeholder communication** — Run structured discovery; present trade-offs non-technical stakeholders can act on; design a handoff that survives your absence
-- **Team enablement** — Enable a team to adopt and operate a live system: shared config, rollout, developer workflows, issue resolution without depending on you
-
----
-
-## Official Prep Course — Module Key Takeaways
-
-*Sourced directly from each module's Recap screen — exact exam-tested rules*
-
-### M1 — Claude Platform & Solution Design (D1 + D2)
-
-**01 Decomposition comes before architecture.** Split work into three buckets: what Claude handles, what existing systems handle, what humans handle. The split is driven by how the model behaves on each piece. Designs that skip this step force Claude into work another system would do at lower cost.
-
-**02 Choosing a pattern = choosing autonomy.** Augmented LLM → workflow → agent is a spectrum from "Claude assists one step" to "Claude plans the whole sequence." Decision factors: predictability, error cost, reversibility, latency tolerance, context availability.
-
-**03 Don't use retrieval as a substitute for live state.** Retrieval is built for static documents and stale snapshots — not for conversations that need live data. Most common mistake: retrieval index used where a live API call was needed.
-
-**04 Start with Sonnet; treat every model swap as a release.** Define what "better" means with an eval set before the swap, and set rollback criteria before — not after. Progressive context (model receives only what it needs at each step) outperforms monolithic context at scale.
-
-**05 Pick entry point by the work it has to do, not what's already on the shelf.** claude.ai / API / operators / MCP each define a different trust boundary. The entry point determines who can see and override the system prompt, which determines the governance posture.
-
----
-
-### M2 — Enterprise Integration & Production (D3 + D4)
-
-**01 Evals as acceptance criteria.** Write the eval suite before the production code. Keep the golden dataset current with every system change. Use the eval as the gate for every model swap or prompt revision — not just at launch.
-
-**02 POC → production.** Estimate cost and latency at production volume before committing to architecture. Build retries, fallback chains, and circuit breakers into the initial design. Name the failure mode specific to your architecture type and document the mitigation.
-
-**03 Use-case sizing and feasibility.** Run every new use case through the four AI properties before issuing a feasibility verdict. State the verdict in exactly one of three forms: *feasible as scoped* / *feasible with constraints* / *not feasible*. Document the load-bearing boundary condition for every constrained verdict.
-
-**04 Enterprise integration patterns.** Enforce identity at the server side. Pass only the minimum necessary data into the context window. Build observability instrumentation into the integration layer from day one — not as a retrofit.
-
-**05 A/B testing and observability.** Identify the primary metric and sample size before running any experiment. At scale, separate per-request observability from aggregate dashboards. Build a translation layer that maps technical metrics (latency, error rate) to business metrics the stakeholder cares about.
-
----
-
-### M3 — Responsible AI, Safety & Risk (D5)
-
-**01 Safety is a stack of layers, not a setting.** Training reduces broad harm for every request but never saw your partner's domain policy, data rules, or authorization model — draw the boundary explicitly and identify what each layer covers. The dangerous failure is *silent*: assuming Claude enforces a rule that doesn't live in any layer.
-
-**02 A guarded path has three control points and a chosen failure direction.** Input screening, output screening, and tool-call authorization answer different questions — only one filter at the end does not cover the other two. Let control errors fail **closed** (not open) for decisions where a wrong pass causes harm.
-
-**03 Fairness and transparency are instrumented, not assumed.** Unequal outcomes arise at points you control: corpus composition, prompt framing, examples, routing logic. Treating fairness as a post-hoc audit misses where you can actually intervene.
-
-**04 Route review by stakes, not by volume.** Confidence, reversibility, and cost of a wrong answer determine which decisions a person should review. Send high-stakes, low-confidence decisions to a human with the inputs and the flag reason. Routing everything floods the queue until reviewers click through without reading.
-
-**05 A compliant entry point is a prerequisite; an evidenced control set is the proof.** A regulation states an outcome and leaves you the control — turn each obligation into a named control with an owner, a measurement method, and an evidence artifact. An auditable trail requires both the control and the proof it ran.
-
----
-
-### M4 — Stakeholder Engagement, Lifecycle & GTM (D6)
-
-**01 Structured discovery.** Run discovery as a four-category process: what the system *must do*, what it *must not do*, what it *must cost*, and *when* it must deliver. Translate every stakeholder preference into a constraint. Write each item as a requirement row with its assumption labeled — so the design traces to the business case, not to your own technical preference.
-
-**02 Communicating tradeoffs.** Present every tradeoff as a package with three elements: the options considered, the criteria you weighed them against, your recommendation — and the *reversal cost* if the decision is undone. The stakeholder is accepting a decision they will have to defend to their own leadership.
-
-**03 Feedback loops and SLA management.** Build the decision layer that maps signals → trigger actions → owners. Set SLA thresholds from their real sources (not from what the dashboard makes easy to export). Wire regulated checkpoints to run on a schedule — compliance checkpoints that aren't wired to a trigger can run for weeks undetected.
-
-**04 Documentation for handoff and audit.** Write the decision, the rejected alternatives, and the tradeoff each resolved *while you still hold the reasoning*. Carry the control register forward as evidence a reviewer will accept. A design without its rationale cannot be safely changed.
-
-**05 Entry point selection and outcomes.** Choose the route on latency, compliance, and cost. For multi-entry-point designs, build an entry-point-responsibility map. Capture the *before* metric, the auditable control, and the reuse note — so the outcome document can justify expansion to a CFO's first question.
-
----
-
-### M5 — Team Enablement & Operational Productivity (D7)
-
-**01 Team setup is shared configuration, distribution, and spend posture — decided up front.** Org-provisioned Skills for everyone; plugins for group/org targeting with versioned updates and rollback; project Skills for one team; API Skills for programmatic reuse — all bounded by model and budget guardrails set at provisioning time.
-
-**02 Adoption is engineered through champions and batches.** A champion per team proves the workflow and seeds adoption. Access without enablement stalls at basic chat. Lumpy adoption never standardizes the productivity gain.
-
-**03 Diligence keeps AI-assisted work trustworthy.** Hold AI-generated code to correctness, security, and maintainability standards. Require that the author can explain what shipped — captured as a verification checklist that gates work before production. "It passed tests" is not sufficient if the author cannot explain the logic.
-
-**04 Operational support = translation + self-sufficiency.** Connect symptoms to architecture so teams understand *why* something broke (translation). Build toward the team being able to diagnose and resolve without the architect — a deployment that requires you to fix every issue hasn't been fully handed over.
-
----
-
-## Official Prep Course — Full Lesson Breakdown
-
-*Sourced directly from Skilljar after login — these are the exact lesson titles and focus areas*
-
-### M1 · Claude Platform & Solution Design (D1 + D2 · 238 min · 12 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **How Claude Behaves** | 1 | Stateless API, no persistent memory by default, token-in/token-out |
-| 03 | **Platform Map & Primitives** | 4 | API vs. claude.ai vs. operators; system prompt, human turn, assistant turn |
-| 04 | **Decomposition** | 4 | What Claude owns vs. deterministic code; don't LLM what rules can decide |
-| 05 | **Pattern Selection** | 5 | Augmented LLM / Fixed workflow / Agentic loop / Multi-agent — pick by complexity |
-| 06 | **Reference Architectures** | 3 | Which architecture for which scenario — the most-tested D1 decision |
-| 07 | **RAG Pipeline Design** | 2 | Chunking, retrieval, reranking, index versioning, stale-index failure modes |
-| 08 | **Model & Context Strategy** | 3 | Model tiers, fast vs. strong routing, context window planning, caching |
-| 09 | **Prompting as Architecture** | 4 | System prompt structure, role, rules, output format as design decisions |
-| 10 | **Entry Points & Governance** | 3 | claude.ai / API / operators / MCP — entry point determines trust boundary |
-| 11 | Assembly & Recap | 3 | End-to-end walkthrough combining all four design decisions |
-| 12 | Module Complete | 1 | — |
-
-### M2 · Enterprise Integration & Production (D3 + D4 · 158 min · 8 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **Evals** | 3 | Eval types: functional / LLM-as-judge / human; evals as release gates |
-| 03 | **POC to Prod** | 3 | Production checklist: traceability, versioning, fallbacks, monitoring |
-| 04 | **Sizing** | 3 | Cost/latency budget: model selection, token limits, caching economics |
-| 05 | **Integration** | 3 | Direct API vs. MCP vs. SDK; tool design, least-privilege tool exposure |
-| 06 | **A/B & Obs** | 3 | A/B testing prompt/model changes; observability: trace IDs, structured logs |
-| 07 | Exercise: Eval Framework | 1 | Applied exercise |
-| 08 | Wrap-up | 4 | Synthesis |
-
-### M3 · Responsible AI, Safety & Risk for Architects (D5 · 114 min · 8 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **Alignment** | 3 | Constitutional AI, RLHF, why Claude refuses — not a prompt issue |
-| 03 | **Guardrails** | 5 | Input screening → output screening → tool-call authorization; fail-closed |
-| 04 | **Fairness** | 3 | Subgroup error rates, calibration, disparate impact detection |
-| 05 | **Review routing** | 3 | Route by: confidence, reversibility, cost, impact — not by volume alone |
-| 06 | **Compliance** | 3 | Data residency, GDPR/HIPAA, retention, audit trail — design-phase decisions |
-| 07 | Wrap-up | 4 | Synthesis |
-| 08 | Module Complete | 0 | — |
-
-### M4 · Stakeholder Engagement, Lifecycle & GTM (D6 · 178 min · 8 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **Discovery** | 3 | Structured discovery: current workflow, pain, users, baseline, success criteria |
-| 03 | **Tradeoffs** | 3 | Present trade-offs non-technical stakeholders can act on; decision framing |
-| 04 | **Feedback Loops** | 3 | Structured feedback path: reviewer overrides → structured labels → eval set |
-| 05 | **Documentation** | 3 | Handoff docs that survive your absence: runbook, rationale, contact map |
-| 06 | **Entry Point** | 3 | GTM sequencing: pilot → measured rollout → production; who approves each gate |
-| 07 | Wrap-up | 4 | Synthesis |
-| 08 | Module Complete | 0 | — |
-
-### M5 · Team Enablement & Operational Productivity (D7 · 45 min · 6 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **Team Setup** | 2 | Shared config, API key management, role-based access, onboarding |
-| 03 | **Dev Workflows** | 2 | Claude Code in practice, prompt iteration loops, code review integration |
-| 04 | **Ops Support** | 1 | Issue triage, escalation path, when to page vs. self-resolve |
-| 05 | Wrap-up | 3 | Synthesis |
-| 06 | Module Complete | 1 | — |
-
----
+*Screen-by-screen course content and prerequisite course summaries, sourced directly from the live Skilljar course. For the exam blueprint, module map, and key takeaways, see the Blueprint tab.*
 
 ## Official Prep Course — Full Screen Content
 
@@ -7360,6 +7395,14 @@ function mdToHtml(md) {
       continue;
     }
     closeBq();
+    // collapsible section: {{collapse: Summary text}} ... {{endcollapse}}
+    if (/^\{\{collapse:\s*(.+)\}\}\s*$/.test(line)) {
+      closeUl(); closeTbl();
+      const summary = line.match(/^\{\{collapse:\s*(.+)\}\}\s*$/)[1];
+      out += `<details class="cs-collapse"><summary>${inline(summary)}</summary>`;
+      continue;
+    }
+    if (/^\{\{endcollapse\}\}\s*$/.test(line)) { closeUl(); closeTbl(); out += '</details>'; continue; }
     // headings
     if (/^##### /.test(line)) { closeUl(); closeTbl(); out += `<h5>${inline(line.slice(6))}</h5>`; continue; }
     if (/^#### /.test(line))  { closeUl(); closeTbl(); const _h4c = line.slice(5); const _h4s = _h4c.startsWith('⚠️') ? ' style="color:#fb923c"' : _h4c.startsWith('✅') ? ' style="color:#4ade80"' : _h4c.startsWith('📋') ? ' style="color:#c4b5fd"' : _h4c.startsWith('✏️') ? ' style="color:#93c5fd"' : ''; out += `<h4${_h4s}>${inline(_h4c)}</h4>`; continue; }
