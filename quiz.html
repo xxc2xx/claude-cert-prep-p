@@ -970,21 +970,21 @@
     .cs-table th { background:#2a3a5c; color:#e2e8f0; padding:6px 10px; text-align:left; border:1px solid #334155; }
     .cs-table td { padding:5px 10px; border:1px solid #334155; color:#cbd5e1; vertical-align:top; }
     .cs-table tr:nth-child(even) td { background:#1e2a3a; }
-    #cheatsheet-body h1 { font-size:1.2em; color:#f59e0b; margin:18px 0 6px; }
-    #cheatsheet-body h2 { font-size:1.05em; color:#7dd3fc; margin:16px 0 4px; border-bottom:1px solid #334155; padding-bottom:4px; }
-    #cheatsheet-body h3 { font-size:0.95em; color:#86efac; margin:12px 0 3px; }
-    #cheatsheet-body p  { color:#cbd5e1; margin:3px 0; font-size:0.87em; line-height:1.55; }
-    #cheatsheet-body hr { border:none; border-top:1px solid #334155; margin:12px 0; }
-    #cheatsheet-body ul { padding-left:18px; margin:4px 0 8px; }
-    #cheatsheet-body li { color:#cbd5e1; font-size:0.87em; margin:2px 0; }
-    #cheatsheet-body li.cb { list-style:none; margin-left:-4px; }
-    #cheatsheet-body li.cb::before { content:'☐ '; }
-    #cheatsheet-body strong { color:#fde68a; }
-    #cheatsheet-body em { color:#a5b4fc; font-style:italic; }
-    #cheatsheet-body code { background:#1e293b; color:#f472b6; padding:1px 4px; border-radius:3px; font-size:0.85em; }
-    #cheatsheet-body br { display:block; margin:4px 0; }
-    #cheatsheet-body h4 { font-size:0.87em; color:#fde68a; margin:20px 0 6px; border-bottom:1px solid #1e293b; padding-bottom:3px; }
-    #cheatsheet-body h5 { font-size:0.83em; color:#f9a8d4; margin:8px 0 1px; }
+    #cheatsheet-body h1, #revision-body h1 { font-size:1.2em; color:#f59e0b; margin:18px 0 6px; }
+    #cheatsheet-body h2, #revision-body h2 { font-size:1.05em; color:#7dd3fc; margin:16px 0 4px; border-bottom:1px solid #334155; padding-bottom:4px; }
+    #cheatsheet-body h3, #revision-body h3 { font-size:0.95em; color:#86efac; margin:12px 0 3px; }
+    #cheatsheet-body p, #revision-body p { color:#cbd5e1; margin:3px 0; font-size:0.87em; line-height:1.55; }
+    #cheatsheet-body hr, #revision-body hr { border:none; border-top:1px solid #334155; margin:12px 0; }
+    #cheatsheet-body ul, #revision-body ul { padding-left:18px; margin:4px 0 8px; }
+    #cheatsheet-body li, #revision-body li { color:#cbd5e1; font-size:0.87em; margin:2px 0; }
+    #cheatsheet-body li.cb, #revision-body li.cb { list-style:none; margin-left:-4px; }
+    #cheatsheet-body li.cb::before, #revision-body li.cb::before { content:'☐ '; }
+    #cheatsheet-body strong, #revision-body strong { color:#fde68a; }
+    #cheatsheet-body em, #revision-body em { color:#a5b4fc; font-style:italic; }
+    #cheatsheet-body code, #revision-body code { background:#1e293b; color:#f472b6; padding:1px 4px; border-radius:3px; font-size:0.85em; }
+    #cheatsheet-body br, #revision-body br { display:block; margin:4px 0; }
+    #cheatsheet-body h4, #revision-body h4 { font-size:0.87em; color:#fde68a; margin:20px 0 6px; border-bottom:1px solid #1e293b; padding-bottom:3px; }
+    #cheatsheet-body h5, #revision-body h5 { font-size:0.83em; color:#f9a8d4; margin:8px 0 1px; }
     .ch-nav-bar { display:flex; flex-wrap:wrap; gap:5px; margin:0 0 14px; padding:8px 0 10px; border-bottom:1px solid var(--border); }
     .ch-nav-btn { background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:16px; padding:4px 11px; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; text-decoration:none; display:inline-block; }
     .ch-nav-btn:hover { background:var(--hover); color:var(--accent); }
@@ -1151,6 +1151,7 @@
     <div class="tabs" style="margin-bottom:16px;" id="study-subtabs">
       <button class="tab-btn active" data-sub="cheatsheet">📋 Cheatsheet</button>
       <button class="tab-btn" data-sub="blueprint">📐 Blueprint</button>
+      <button class="tab-btn" data-sub="revision">🔄 Revision</button>
       <button class="tab-btn" data-sub="finalcheck">🎯 Final Check</button>
     </div>
     <div id="study-cheatsheet" class="tab-content active">
@@ -1158,6 +1159,9 @@
     </div>
     <div id="study-blueprint" class="tab-content">
       <div class="notes-body" id="blueprint-body"></div>
+    </div>
+    <div id="study-revision" class="tab-content">
+      <div class="notes-body" id="revision-body"></div>
     </div>
     <div id="study-finalcheck" class="tab-content">
       <div id="final-check-body"></div>
@@ -3790,6 +3794,7 @@ document.getElementById('study-subtabs').addEventListener('click', (e) => {
   if (sub === 'finalcheck') renderFinalCheck();
   if (sub === 'cheatsheet') renderCheatsheet();
   if (sub === 'blueprint') renderBlueprint();
+  if (sub === 'revision') renderRevision();
 });
 
 // ===== Controls =====
@@ -4369,6 +4374,24 @@ const CHEATSHEET_MD = `# CCAR-P — Official Study Guide
 | Retakes | 14 days after 1st fail · 30 days after 2nd · 90 days after 3rd · max 4/year |
 | Validity | 12 months — renew via free non-proctored assessment |
 
+`;
+
+const REVISION_MD = `# Skilljar Course — Revision
+*Full official course content — module map, learning outcomes, key takeaways, screen-by-screen notes, and prerequisite course summaries. Sourced directly from Skilljar SCORM.*
+
+## 🎯 Key Areas to Focus
+
+*Priority order by official exam weight (see Blueprint tab for the full breakdown) — study the heaviest-weighted modules first. Each "if you remember one thing" line is the module's own #1 Recap takeaway.*
+
+| Priority | Module | Domain(s) | Weight | If you remember one thing |
+|----------|--------|-----------|--------|----------------------------|
+| 1 | M2 — Enterprise Integration & Production | D3 + D4 | **35%** (19%+16%) | Evals as acceptance criteria — write the eval suite before the production code, and use it as the gate for every model swap or prompt revision |
+| 2 | M1 — Claude Platform & Solution Design | D1 + D2 | **30%** (17%+13%) | Decomposition comes before architecture — split work into what Claude handles, what existing systems handle, what humans handle |
+| 3 | M3 — Responsible AI, Safety & Risk | D5 | **14%** | Safety is a stack of layers, not a setting — draw the boundary explicitly; the dangerous failure is assuming Claude enforces a rule that lives in no layer |
+| 3 | M4 — Stakeholder Engagement, Lifecycle & GTM | D6 | **14%** | Structured discovery — translate every stakeholder preference into a constraint, traced to the business case, not your technical preference |
+| 5 | M5 — Team Enablement & Operational Productivity | D7 | **7%** | Team setup is shared configuration, distribution, and spend posture — decided up front |
+
+**Reading order for this tab:** Module Map (what each module covers) → Learning Outcomes (what the exam measures) → Key Takeaways (the exact exam-tested rules, one card per module) → Full Lesson Breakdown (every lesson title, for cross-reference) → Full Screen Content (every Teaching / Watch Out / Checkpoint / Recap screen, for deep review) → Prerequisite Courses (assumed background knowledge).
 
 ---
 
@@ -4385,79 +4408,6 @@ const CHEATSHEET_MD = `# CCAR-P — Official Study Guide
 | Team Enablement & Operational Productivity | 45 min | Config, rollout, developer workflows, operational issue resolution | D7 |
 
 **Prerequisites assumed by exam:** Claude 101 · Claude Code in Action · AI Fluency: Framework & Foundations · Building with the Claude API · Intro to MCP · AI Capabilities & Limitations
-
----
-
-## Official Prep Course — Full Lesson Breakdown
-
-*Sourced directly from Skilljar after login — these are the exact lesson titles and focus areas*
-
-### M1 · Claude Platform & Solution Design (D1 + D2 · 238 min · 12 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **How Claude Behaves** | 1 | Stateless API, no persistent memory by default, token-in/token-out |
-| 03 | **Platform Map & Primitives** | 4 | API vs. claude.ai vs. operators; system prompt, human turn, assistant turn |
-| 04 | **Decomposition** | 4 | What Claude owns vs. deterministic code; don't LLM what rules can decide |
-| 05 | **Pattern Selection** | 5 | Augmented LLM / Fixed workflow / Agentic loop / Multi-agent — pick by complexity |
-| 06 | **Reference Architectures** | 3 | Which architecture for which scenario — the most-tested D1 decision |
-| 07 | **RAG Pipeline Design** | 2 | Chunking, retrieval, reranking, index versioning, stale-index failure modes |
-| 08 | **Model & Context Strategy** | 3 | Model tiers, fast vs. strong routing, context window planning, caching |
-| 09 | **Prompting as Architecture** | 4 | System prompt structure, role, rules, output format as design decisions |
-| 10 | **Entry Points & Governance** | 3 | claude.ai / API / operators / MCP — entry point determines trust boundary |
-| 11 | Assembly & Recap | 3 | End-to-end walkthrough combining all four design decisions |
-| 12 | Module Complete | 1 | — |
-
-### M2 · Enterprise Integration & Production (D3 + D4 · 158 min · 8 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **Evals** | 3 | Eval types: functional / LLM-as-judge / human; evals as release gates |
-| 03 | **POC to Prod** | 3 | Production checklist: traceability, versioning, fallbacks, monitoring |
-| 04 | **Sizing** | 3 | Cost/latency budget: model selection, token limits, caching economics |
-| 05 | **Integration** | 3 | Direct API vs. MCP vs. SDK; tool design, least-privilege tool exposure |
-| 06 | **A/B & Obs** | 3 | A/B testing prompt/model changes; observability: trace IDs, structured logs |
-| 07 | Exercise: Eval Framework | 1 | Applied exercise |
-| 08 | Wrap-up | 4 | Synthesis |
-
-### M3 · Responsible AI, Safety & Risk for Architects (D5 · 114 min · 8 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **Alignment** | 3 | Constitutional AI, RLHF, why Claude refuses — not a prompt issue |
-| 03 | **Guardrails** | 5 | Input screening → output screening → tool-call authorization; fail-closed |
-| 04 | **Fairness** | 3 | Subgroup error rates, calibration, disparate impact detection |
-| 05 | **Review routing** | 3 | Route by: confidence, reversibility, cost, impact — not by volume alone |
-| 06 | **Compliance** | 3 | Data residency, GDPR/HIPAA, retention, audit trail — design-phase decisions |
-| 07 | Wrap-up | 4 | Synthesis |
-| 08 | Module Complete | 0 | — |
-
-### M4 · Stakeholder Engagement, Lifecycle & GTM (D6 · 178 min · 8 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **Discovery** | 3 | Structured discovery: current workflow, pain, users, baseline, success criteria |
-| 03 | **Tradeoffs** | 3 | Present trade-offs non-technical stakeholders can act on; decision framing |
-| 04 | **Feedback Loops** | 3 | Structured feedback path: reviewer overrides → structured labels → eval set |
-| 05 | **Documentation** | 3 | Handoff docs that survive your absence: runbook, rationale, contact map |
-| 06 | **Entry Point** | 3 | GTM sequencing: pilot → measured rollout → production; who approves each gate |
-| 07 | Wrap-up | 4 | Synthesis |
-| 08 | Module Complete | 0 | — |
-
-### M5 · Team Enablement & Operational Productivity (D7 · 45 min · 6 sections)
-
-| # | Lesson | Screens | Exam signal |
-|---|--------|---------|-------------|
-| 01 | Module Introduction | 1 | — |
-| 02 | **Team Setup** | 2 | Shared config, API key management, role-based access, onboarding |
-| 03 | **Dev Workflows** | 2 | Claude Code in practice, prompt iteration loops, code review integration |
-| 04 | **Ops Support** | 1 | Issue triage, escalation path, when to page vs. self-resolve |
-| 05 | Wrap-up | 3 | Synthesis |
-| 06 | Module Complete | 1 | — |
 
 ---
 
@@ -4547,6 +4497,78 @@ By exam time you must be able to:
 
 ---
 
+## Official Prep Course — Full Lesson Breakdown
+
+*Sourced directly from Skilljar after login — these are the exact lesson titles and focus areas*
+
+### M1 · Claude Platform & Solution Design (D1 + D2 · 238 min · 12 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **How Claude Behaves** | 1 | Stateless API, no persistent memory by default, token-in/token-out |
+| 03 | **Platform Map & Primitives** | 4 | API vs. claude.ai vs. operators; system prompt, human turn, assistant turn |
+| 04 | **Decomposition** | 4 | What Claude owns vs. deterministic code; don't LLM what rules can decide |
+| 05 | **Pattern Selection** | 5 | Augmented LLM / Fixed workflow / Agentic loop / Multi-agent — pick by complexity |
+| 06 | **Reference Architectures** | 3 | Which architecture for which scenario — the most-tested D1 decision |
+| 07 | **RAG Pipeline Design** | 2 | Chunking, retrieval, reranking, index versioning, stale-index failure modes |
+| 08 | **Model & Context Strategy** | 3 | Model tiers, fast vs. strong routing, context window planning, caching |
+| 09 | **Prompting as Architecture** | 4 | System prompt structure, role, rules, output format as design decisions |
+| 10 | **Entry Points & Governance** | 3 | claude.ai / API / operators / MCP — entry point determines trust boundary |
+| 11 | Assembly & Recap | 3 | End-to-end walkthrough combining all four design decisions |
+| 12 | Module Complete | 1 | — |
+
+### M2 · Enterprise Integration & Production (D3 + D4 · 158 min · 8 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Evals** | 3 | Eval types: functional / LLM-as-judge / human; evals as release gates |
+| 03 | **POC to Prod** | 3 | Production checklist: traceability, versioning, fallbacks, monitoring |
+| 04 | **Sizing** | 3 | Cost/latency budget: model selection, token limits, caching economics |
+| 05 | **Integration** | 3 | Direct API vs. MCP vs. SDK; tool design, least-privilege tool exposure |
+| 06 | **A/B & Obs** | 3 | A/B testing prompt/model changes; observability: trace IDs, structured logs |
+| 07 | Exercise: Eval Framework | 1 | Applied exercise |
+| 08 | Wrap-up | 4 | Synthesis |
+
+### M3 · Responsible AI, Safety & Risk for Architects (D5 · 114 min · 8 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Alignment** | 3 | Constitutional AI, RLHF, why Claude refuses — not a prompt issue |
+| 03 | **Guardrails** | 5 | Input screening → output screening → tool-call authorization; fail-closed |
+| 04 | **Fairness** | 3 | Subgroup error rates, calibration, disparate impact detection |
+| 05 | **Review routing** | 3 | Route by: confidence, reversibility, cost, impact — not by volume alone |
+| 06 | **Compliance** | 3 | Data residency, GDPR/HIPAA, retention, audit trail — design-phase decisions |
+| 07 | Wrap-up | 4 | Synthesis |
+| 08 | Module Complete | 0 | — |
+
+### M4 · Stakeholder Engagement, Lifecycle & GTM (D6 · 178 min · 8 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Discovery** | 3 | Structured discovery: current workflow, pain, users, baseline, success criteria |
+| 03 | **Tradeoffs** | 3 | Present trade-offs non-technical stakeholders can act on; decision framing |
+| 04 | **Feedback Loops** | 3 | Structured feedback path: reviewer overrides → structured labels → eval set |
+| 05 | **Documentation** | 3 | Handoff docs that survive your absence: runbook, rationale, contact map |
+| 06 | **Entry Point** | 3 | GTM sequencing: pilot → measured rollout → production; who approves each gate |
+| 07 | Wrap-up | 4 | Synthesis |
+| 08 | Module Complete | 0 | — |
+
+### M5 · Team Enablement & Operational Productivity (D7 · 45 min · 6 sections)
+
+| # | Lesson | Screens | Exam signal |
+|---|--------|---------|-------------|
+| 01 | Module Introduction | 1 | — |
+| 02 | **Team Setup** | 2 | Shared config, API key management, role-based access, onboarding |
+| 03 | **Dev Workflows** | 2 | Claude Code in practice, prompt iteration loops, code review integration |
+| 04 | **Ops Support** | 1 | Issue triage, escalation path, when to page vs. self-resolve |
+| 05 | Wrap-up | 3 | Synthesis |
+| 06 | Module Complete | 1 | — |
+
+---
 
 ## Official Prep Course — Full Screen Content
 
@@ -5661,7 +5683,6 @@ The four competencies apply across all three engagement modes (Automation, Augme
 - **Diligence**: accountability, transparency, responsibility
 - Most powerful outcomes: humans + AI building on each other's strengths
 - Framework designed to remain relevant as AI continues to evolve
-
 `;
 
 function mdToHtml(md) {
@@ -5852,6 +5873,14 @@ function renderBlueprint() {
   if (!el || el.dataset.loaded) return;
   el.dataset.loaded = '1';
   el.innerHTML = mdToHtml(BLUEPRINT_MD);
+  addChapterNav(el);
+}
+
+function renderRevision() {
+  const el = document.getElementById('revision-body');
+  if (!el || el.dataset.loaded) return;
+  el.dataset.loaded = '1';
+  el.innerHTML = mdToHtml(preprocessMD(REVISION_MD));
   addChapterNav(el);
 }
 
