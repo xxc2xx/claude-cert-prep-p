@@ -3817,6 +3817,29 @@ document.getElementById('study-subtabs').addEventListener('click', (e) => {
   if (sub === 'revision') renderRevision();
 });
 
+// Deep-link support: a URL hash like #ch-official-prep-course-module-map may point to a
+// heading in any Study Notes subtab. Subtab content is lazy-rendered and hidden via
+// display:none until its tab is active, so a bare anchor jump silently does nothing —
+// find which subtab owns the id, activate that subtab (which renders it), then scroll.
+function routeToHash() {
+  const id = location.hash.replace(/^#/, '');
+  if (!id) return;
+  renderCheatsheet();
+  renderBlueprint();
+  renderRevision();
+  const target = document.getElementById(id);
+  if (!target) return;
+  const subEl = target.closest('.tab-content[id^="study-"]');
+  if (!subEl) return;
+  const sub = subEl.id.replace('study-', '');
+  const mainBtn = document.querySelector('#main-tabs .tab-btn[data-tab="study"]');
+  if (mainBtn && !mainBtn.classList.contains('active')) mainBtn.click();
+  const subBtn = document.querySelector('#study-subtabs .tab-btn[data-sub="' + sub + '"]');
+  if (subBtn && !subBtn.classList.contains('active')) subBtn.click();
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+window.addEventListener('hashchange', routeToHash);
+
 // ===== Controls =====
 document.getElementById('apply-filters').addEventListener('click', render);
 document.getElementById('filter-domain').addEventListener('change', render);
@@ -4599,6 +4622,29 @@ const CHEATSHEET_MD = `# CCAR-P — Official Study Guide
 | Scoring | Criterion-referenced — fixed standard, not curved |
 | Retakes | 14 days after 1st fail · 30 days after 2nd · 90 days after 3rd · max 4/year |
 | Validity | 12 months — renew via free non-proctored assessment |
+
+## When to Trigger — Practical Decision Points
+
+**Batch API — when to route a workload through it:**
+| Signal | Batch fits? |
+|---|---|
+| Non-interactive — no user is waiting synchronously for the reply | ✅ |
+| Regularly scheduled / bulk run (e.g. refresh all markets on a cadence) | ✅ |
+| Cost is the binding constraint over latency — roughly 50% price reduction vs. standard API | ✅ |
+| Up to 100,000 requests per batch | ✅ |
+| Real-time / conversational turn, user is waiting on the response | ❌ use standard API |
+| Regulated data | ⚠️ confirm Batch is covered under the BAA before routing governed data through it |
+
+> Rule of thumb: if you're re-running the same set of items on a schedule rather than answering one live request, that's the Batch API's exact use case — the async window is what buys the price cut.
+
+**Build-time interface — SDK vs. Agent SDK:**
+| Need | Use |
+|---|---|
+| Your own code owns the request/response loop; you just want language-native ergonomics (auth, formatting, retries, streaming handled for you) | **SDK** — thin wrapper over the API |
+| Claude needs to iterate across multiple turns/tool calls autonomously *inside your own product*, and you don't want to hand-roll iteration, tool execution, and termination | **Agent SDK** (\`@anthropic-ai/claude-agent-sdk\`) — same managed loop that powers Claude Code |
+| Only one client will ever use the tools, or you need raw HTTP control for a feature not yet shipped in the SDK | Direct API |
+
+> Rule of thumb: SDK = you write the loop; Agent SDK = Anthropic's loop, embedded in your app.
 
 `;
 
@@ -7756,6 +7802,7 @@ function renderFinalCheck() {
 // ===== Init =====
 renderCheatsheet();
 render();
+routeToHash();
 </script>
 </body>
 </html>
