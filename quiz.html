@@ -308,6 +308,31 @@
     border-color: var(--red);
   }
   .choice.locked { cursor: default; }
+  .matrix-row {
+    padding: 12px 14px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  .matrix-row .stmt-text { margin-bottom: 8px; line-height: 1.5; }
+  .matrix-row .stmt-yn { display: flex; align-items: center; gap: 16px; font-size: 14px; }
+  .matrix-row .stmt-yn label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .matrix-row.locked.correct { background: rgba(63, 185, 80, 0.12); border-color: var(--green); }
+  .matrix-row.locked.wrong { background: rgba(248, 81, 73, 0.10); border-color: var(--red); }
+  .matrix-row .stmt-answer { color: var(--blue); font-size: 12px; margin-left: auto; }
+  .matching-row { margin-bottom: 14px; }
+  .matching-row .scenario-text { margin-bottom: 8px; line-height: 1.5; font-weight: 500; }
+  .matching-row .match-options { display: flex; flex-wrap: wrap; gap: 8px; }
+  .choice.match-choice { padding: 8px 12px; font-size: 14px; flex: 0 0 auto; }
+  .req-signal, .decision-rule {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: var(--panel-2);
+    border-left: 3px solid var(--accent-2, var(--blue));
+    border-radius: 4px;
+    font-size: 14px;
+  }
   .actions {
     display: flex;
     gap: 10px;
@@ -1130,6 +1155,8 @@
       <button class="mock-btn" id="mock-exam-f" title="Advanced Mock F — 63 hard questions, timed" style="background:#7c3aed;border-color:#7c3aed;color:#fff">▶ Adv F</button>
       <button class="mock-btn" id="mock-exam-g" title="Advanced Mock G — 63 Purcell questions, timed" style="background:#0f766e;border-color:#0f766e;color:#fff">▶ Adv G</button>
       <button class="mock-btn" id="mock-exam-final" title="Final Sim — 15 locked questions, no domain labels, binding-constraint difficulty" style="background:#b91c1c;border-color:#b91c1c;color:#fff">🔒 Final Sim</button>
+      <button class="mock-btn" id="brutal-30" title="Brutal Mode — 30 Level 3/4 questions only, untimed, no explanations until submitted" style="background:#450a0a;border-color:#7f1d1d;color:#fff">⚔️ Brutal 30</button>
+      <button class="mock-btn" id="brutal-63" title="Brutal Mode — 63 Level 3/4 questions only, untimed, no explanations until submitted" style="background:#450a0a;border-color:#7f1d1d;color:#fff">⚔️ Brutal 63</button>
         <button id="apply-filters" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--muted);font-family:inherit;cursor:pointer;">Apply</button>
         <button id="reset" class="danger" style="margin-left:auto;">Reset progress</button>
       </div>
@@ -1199,6 +1226,29 @@
 <footer>Unofficial CCAR-P Study Hub · 389 original questions + 3 public official samples · Not affiliated with Anthropic</footer>
 
 <script>
+// ===== Architecture Judgment Simulator schema (additive) =====
+// New optional fields on question objects, populated incrementally as questions are
+// recalibrated. Legacy questions simply omit these — every reader must treat them as
+// possibly undefined. Kept as named constants so analytics/authoring code has one
+// source of truth instead of scattered magic strings.
+//   level             1|2|3|4   — 1 Foundation Recall, 2 Applied Scenario, 3 Architecture
+//                                 Trade-off, 4 Professional Ambiguity. Coexists with the
+//                                 legacy `difficulty` string indefinitely; `difficulty`
+//                                 stays authoritative for existing UI/filters.
+//   lifecycleStage    one of LIFECYCLE_STAGES
+//   mistakeTag        one of MISTAKE_TAGS — the most likely reasoning failure if this
+//                                 question is answered wrong (auto-detected
+//                                 'Multi-select Partial Reasoning' overrides this at
+//                                 analysis time for multi/matrix/matching partial-credit misses)
+//   requirementSignal string    — the exact stem phrase/constraint that determines the answer
+//   decisionRule      string    — a short reusable one-line principle
+//   examTrap          string    — supersedes the legacy freeform `trap` when both are present
+const LIFECYCLE_STAGES = ['discovery','scoping','pre-poc','poc','pre-pilot','production','deployment','post-deployment','monitoring'];
+const MISTAKE_TAGS = ['Knowledge Gap','Missed Constraint','Wrong Lifecycle Stage','Symptom vs Root Cause',
+  'Overengineering','Underengineering','Security Boundary Error','Cost/Latency Trade-off Error',
+  'Evaluation Error','Stakeholder/Business Error','Misread FIRST/BEST/MOST',
+  'Multi-select Partial Reasoning','Claude Platform Knowledge Gap'];
+
 const QUESTIONS = [
   {
     id: "Q001", block: "🔴 D1 · Solution Design & Architecture", topic: "1.1 — Translate business problems into Claude-based AI s", domain: "D1", form: "Mock A", tier: "exam", qtype: "single", difficulty: "Medium",
@@ -3133,6 +3183,25 @@ function saveProgress() {
   try { __storage.setItem(STORAGE_KEY, JSON.stringify(progress)); } catch(e) {}
 }
 
+// Cross-attempt metadata, kept separate from `progress` (which holds only the latest
+// answer and is fully cleared on retry) so "first attempt was correct" survives retries.
+const ATTEMPT_HISTORY_KEY = 'claude-cert-p-attempts';
+let attemptHistory = {};
+try { attemptHistory = JSON.parse(__storage.getItem(ATTEMPT_HISTORY_KEY) || '{}'); } catch(e) { attemptHistory = {}; }
+
+function saveAttemptHistory() {
+  try { __storage.setItem(ATTEMPT_HISTORY_KEY, JSON.stringify(attemptHistory)); } catch(e) {}
+}
+
+function recordAttempt(qid, correct) {
+  const prev = attemptHistory[qid];
+  attemptHistory[qid] = {
+    attempts: (prev?.attempts || 0) + 1,
+    firstCorrect: prev ? prev.firstCorrect : correct,
+  };
+  saveAttemptHistory();
+}
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -3147,6 +3216,7 @@ function shuffle(arr) {
   const RATIO_THRESHOLD = 1.6;
   const violations = [];
   for (const q of QUESTIONS) {
+    if (q.qtype !== 'single' && q.qtype !== 'multi') continue; // matrix/matching have no `choices`
     const correct = q.choices[q.answer];
     if (!correct) continue;
     const distractors = q.choices.filter((_, i) => i !== q.answer);
@@ -3158,6 +3228,42 @@ function shuffle(arr) {
   }
   if (violations.length > 0) {
     console.warn('[QC] Correct option is ≥' + RATIO_THRESHOLD + '× mean distractor length in ' + violations.length + ' question(s):', violations.map(v => v.id + ' (' + v.ratio + 'x)').join(', '));
+  }
+})();
+
+// ===== QC: Final Sim composition target =====
+// Target (Architecture Judgment Simulator recalibration): 63 items total, ~35-38 single,
+// ~22-25 multi, 2-4 matrix/matching; difficulty-level mix 10-15% L1 / 25-30% L2 / 35-40% L3 / 20-25% L4.
+// `level` is unpopulated on all legacy questions today, so the level report will show 100% "unset"
+// until the Final Sim rebuild batch lands — that is expected, not a bug.
+(function validateFinalSimComposition() {
+  const TARGET_TOTAL = 63;
+  const set = QUESTIONS.filter(q => q.form === 'Final Sim');
+  const byQtype = { single: 0, multi: 0, matrix: 0, matching: 0 };
+  const byLevel = { 1: 0, 2: 0, 3: 0, 4: 0, unset: 0 };
+  set.forEach(q => {
+    byQtype[q.qtype] = (byQtype[q.qtype] || 0) + 1;
+    const lvl = q.level && byLevel.hasOwnProperty(q.level) ? q.level : 'unset';
+    byLevel[lvl]++;
+  });
+  const gaps = [];
+  if (set.length !== TARGET_TOTAL) gaps.push('total is ' + set.length + ', target ' + TARGET_TOTAL);
+  if (byQtype.single < 35 || byQtype.single > 38) gaps.push('single: ' + byQtype.single + ' (target 35-38)');
+  if (byQtype.multi < 22 || byQtype.multi > 25) gaps.push('multi: ' + byQtype.multi + ' (target 22-25)');
+  const matrixMatching = byQtype.matrix + byQtype.matching;
+  if (matrixMatching < 2 || matrixMatching > 4) gaps.push('matrix+matching: ' + matrixMatching + ' (target 2-4)');
+  const pct = n => set.length ? Math.round((n / set.length) * 100) : 0;
+  const levelRanges = { 1: [10, 15], 2: [25, 30], 3: [35, 40], 4: [20, 25] };
+  for (const lvl of [1, 2, 3, 4]) {
+    const [lo, hi] = levelRanges[lvl];
+    const p = pct(byLevel[lvl]);
+    if (p < lo || p > hi) gaps.push('level ' + lvl + ': ' + p + '% (target ' + lo + '-' + hi + '%)');
+  }
+  if (byLevel.unset > 0) gaps.push(byLevel.unset + ' question(s) have no `level` set');
+  if (gaps.length > 0) {
+    console.warn('[QC] Final Sim composition gaps:', gaps.join('; '), { byQtype, byLevel });
+  } else {
+    console.info('[QC] Final Sim composition matches target.', { byQtype, byLevel });
   }
 })();
 
@@ -3282,10 +3388,40 @@ function startMockExam(mode) {
     flagged: new Set(),
     timerHandle: null,
     label,
+    kind: 'exam',
   };
   document.getElementById('mock-banner').style.display = 'flex';
   mockState.timerHandle = setInterval(updateMockTimer, 1000);
   updateMockTimer();
+  updateMockAnswered();
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Brutal Mode — Level 3/4 only, untimed, no PASS/FAIL@720 framing (misleading on a
+// hardest-only pool), reuses the same mockState/inMock machinery as a timed exam so
+// explanations stay hidden until the whole set is submitted, same as every other mock.
+function startBrutalMode(size) {
+  if (mockState.active) return;
+  if (retrySession.active) retrySession = { active: false, qids: new Set() };
+  const pool = shuffle(QUESTIONS.filter(q => q.level === 3 || q.level === 4));
+  if (pool.length < 10) {
+    alert('Not enough Level 3/4 questions recalibrated yet for Brutal Mode (' + pool.length + ' available). More are added as the question bank is upgraded.');
+    return;
+  }
+  const draw = pool.slice(0, Math.min(size, pool.length));
+  mockState = {
+    active: true,
+    qids: draw.map(q => q.id),
+    startedAt: Date.now(),
+    progress: {},
+    flagged: new Set(),
+    timerHandle: null,
+    label: '⚔️ Brutal ' + draw.length,
+    kind: 'brutal',
+  };
+  document.getElementById('mock-banner').style.display = 'flex';
+  document.getElementById('mock-timer').textContent = 'Untimed';
   updateMockAnswered();
   render();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3312,7 +3448,7 @@ function abortMockExam() {
   if (!mockState.active) return;
   if (!confirm('Abort the mock exam? Progress in this mock will be discarded.')) return;
   clearInterval(mockState.timerHandle);
-  mockState = { active: false, qids: [], startedAt: 0, progress: {}, flagged: new Set(), timerHandle: null, label: '' };
+  mockState = { active: false, qids: [], startedAt: 0, progress: {}, flagged: new Set(), timerHandle: null, label: '', kind: 'exam' };
   document.getElementById('mock-banner').style.display = 'none';
   render();
 }
@@ -3320,11 +3456,13 @@ function abortMockExam() {
 function endMockExam(timedOut = false) {
   if (!mockState.active) return;
   clearInterval(mockState.timerHandle);
+  const isBrutal = mockState.kind === 'brutal';
   const answered = Object.keys(mockState.progress).length;
   const correct = Object.values(mockState.progress).filter(p => p.correct).length;
   const total = mockState.qids.length;
   const scaled = Math.round(100 + (correct / total) * 900);
   const passed = scaled >= 720;
+  const rawPct = total ? Math.round(100 * correct / total) : 0;
 
   const DOMAINS = ['D1','D2','D3','D4','D5','D6','D7'];
   const domNames = { D1:'Solution Design', D2:'Models/Prompting', D3:'Integration', D4:'Evaluation', D5:'Governance', D6:'Stakeholder', D7:'Dev Productivity' };
@@ -3357,32 +3495,40 @@ function endMockExam(timedOut = false) {
     <div class="mock-results">
       <h2>${timedOut ? '⏱ Time up' : '🏁'} ${mockState.label} — Result</h2>
       <div>Answered ${answered}/${total} · Correct ${correct}</div>
-      <div class="score-big ${passed ? 'score-pass' : 'score-fail'}">${scaled} / 1000</div>
-      <div><b>${passed ? '✅ PASS' : '❌ FAIL'}</b> · Passing = 720 (scaled — no published raw-score conversion).</div>
+      ${isBrutal
+        ? `<div class="score-big">${rawPct}%</div>
+           <div style="font-size:12px;color:var(--muted)">Raw accuracy on the hardest (Level 3/4) pool only — not a pass predictor. 70% = good · 80% = very strong · 85%+ = exceptional.</div>`
+        : `<div class="score-big ${passed ? 'score-pass' : 'score-fail'}">${scaled} / 1000</div>
+           <div><b>${passed ? '✅ PASS' : '❌ FAIL'}</b> · Passing = 720 (scaled — no published raw-score conversion).</div>`}
       ${flagStats}
       <table style="margin-top:16px">
         <thead><tr><th>Domain</th><th></th><th>Score</th><th>%</th></tr></thead>
         <tbody>${domainRows}</tbody>
       </table>
-      <div style="margin-top:12px;font-size:11px;color:var(--muted)">Linear approximation: 100(0 correct) → 1000(all correct). Real exam uses IRT scaling.</div>
+      ${isBrutal ? '' : `<div style="margin-top:12px;font-size:11px;color:var(--muted)">Linear approximation: 100(0 correct) → 1000(all correct). Real exam uses IRT scaling.</div>`}
       <button id="mock-close" class="secondary" style="margin-top:16px;">Close and review missed</button>
     </div>
   `;
 
   const state = { ...mockState };
-  const record = { ts: Date.now(), label: state.label, correct, total, scaled, passed, qids: state.qids };
-  mockHistory.push(record);
-  lastMock = record;
-  try { __storage.setItem(MOCK_HISTORY_KEY, JSON.stringify(mockHistory.slice(-10))); } catch(e) {}
+  if (!isBrutal) {
+    // Brutal Mode results aren't persisted to mockHistory — that table/feed assumes the
+    // 720-scaled PASS/FAIL framing, and a hardest-only pool shouldn't feed the Readiness
+    // Index's Final Sim input either (avoids double-jeopardy on the same weak area).
+    const record = { ts: Date.now(), label: state.label, correct, total, scaled, passed, qids: state.qids };
+    mockHistory.push(record);
+    lastMock = record;
+    try { __storage.setItem(MOCK_HISTORY_KEY, JSON.stringify(mockHistory.slice(-10))); } catch(e) {}
+  }
 
-  mockState = { active: false, qids: state.qids, startedAt: 0, progress: state.progress, flagged: new Set(), timerHandle: null, label: '' };
+  mockState = { active: false, qids: state.qids, startedAt: 0, progress: state.progress, flagged: new Set(), timerHandle: null, label: '', kind: 'exam' };
   document.getElementById('mock-banner').style.display = 'none';
   const quizEl = document.getElementById('quiz');
   quizEl.innerHTML = banner;
   document.getElementById('mock-close').addEventListener('click', () => {
     for (const [qid, mp] of Object.entries(state.progress)) {
       if (!mp.correct) {
-        progress[qid] = { chosen: mp.chosen, chosenSet: mp.chosenSet, correct: false, fromMock: true, ts: Date.now() };
+        progress[qid] = { ...mp, correct: false, fromMock: true, ts: Date.now() };
       }
     }
     saveProgress();
@@ -3510,6 +3656,8 @@ function renderQuestion(q, idx) {
   const showAnswerHighlight = locked && !inMock;
   const conf = p && p.confidence;
   const isMulti = q.qtype === 'multi';
+  const isMatrix = q.qtype === 'matrix';
+  const isMatching = q.qtype === 'matching';
 
   const confBadge = conf
     ? `<span class="conf-badge conf-${conf}">${conf === 'high' ? '⭐⭐⭐ High' : conf === 'med' ? '⭐⭐ Med' : '⭐ Low'}</span>` : '';
@@ -3521,7 +3669,61 @@ function renderQuestion(q, idx) {
   const multiBadge = isMulti ? `<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(88,166,255,0.12);color:var(--blue);">SELECT ${selectN}</span>` : '';
   const diffBadge = q.difficulty === 'Hard' ? `<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(248,81,73,0.10);color:var(--red);">Hard</span>` : '';
 
+  function renderMatrixStatements() {
+    const chosenStatements = p && p.chosenStatements;
+    return q.statements.map((s, i) => {
+      const chosenVal = chosenStatements ? chosenStatements[i] : null;
+      let cls = 'matrix-row';
+      if (showAnswerHighlight && chosenStatements) {
+        cls += ' locked ' + (chosenVal === s.correct ? 'correct' : 'wrong');
+      } else if (locked && inMock) {
+        cls += ' locked';
+      }
+      return `<div class="${cls}">
+        <div class="stmt-text">${s.text}</div>
+        <div class="stmt-yn">
+          <label><input type="radio" name="${q.id}-stmt-${i}" value="yes" ${locked ? 'disabled' : ''} ${chosenVal === true ? 'checked' : ''} /> Yes</label>
+          <label><input type="radio" name="${q.id}-stmt-${i}" value="no" ${locked ? 'disabled' : ''} ${chosenVal === false ? 'checked' : ''} /> No</label>
+          ${showAnswerHighlight ? `<span class="stmt-answer">Correct: ${s.correct ? 'Yes' : 'No'}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderMatchingRows() {
+    const chosenMap = p && p.chosenMap;
+    return q.scenarios.map((scenario, i) => {
+      const chosenIdx = chosenMap ? chosenMap[i] : null;
+      const optionChoices = q.options.map((opt, oi) => {
+        let cls = 'choice match-choice';
+        let checked = false;
+        if (showAnswerHighlight && chosenMap) {
+          cls += ' locked';
+          const wasChosen = oi === chosenIdx;
+          const isCorrect = oi === q.correctMap[i];
+          if (wasChosen && isCorrect) cls += ' correct';
+          else if (wasChosen && !isCorrect) cls += ' wrong';
+          else if (!wasChosen && isCorrect) cls += ' missed';
+          if (wasChosen) checked = true;
+        } else if (locked && inMock) {
+          cls += ' locked';
+          if (oi === chosenIdx) { cls += ' chosen'; checked = true; }
+        } else if (oi === chosenIdx) checked = true;
+        return `<label class="${cls}">
+          <input type="radio" name="${q.id}-match-${i}" value="${oi}" ${locked ? 'disabled' : ''} ${checked ? 'checked' : ''} />
+          <span>${opt}</span>
+        </label>`;
+      }).join('');
+      return `<div class="matching-row">
+        <div class="scenario-text">${scenario}</div>
+        <div class="match-options">${optionChoices}</div>
+      </div>`;
+    }).join('');
+  }
+
   function renderChoices() {
+    if (isMatrix) return renderMatrixStatements();
+    if (isMatching) return renderMatchingRows();
     if (isMulti) {
       const chosenSet = (p && p.chosenSet) ? new Set(p.chosenSet) : null;
       const answerSet = new Set(q.answerSet);
@@ -3580,6 +3782,8 @@ function renderQuestion(q, idx) {
     </div>
     <div class="qtext">${q.q}</div>
     ${isMulti ? `<div class="multi-hint">Select ${selectN} answer${selectN > 1 ? 's' : ''}</div>` : ''}
+    ${isMatrix ? `<div class="multi-hint">Mark each statement Yes/No independently</div>` : ''}
+    ${isMatching ? `<div class="multi-hint">Match each scenario — options may repeat</div>` : ''}
     <div class="choices">${renderChoices()}</div>
     ${!locked ? `
     <div class="confidence-picker" data-qid="${q.id}">
@@ -3597,9 +3801,11 @@ function renderQuestion(q, idx) {
     </div>
     ${inMock ? '' : `
     <div class="explanation ${locked ? 'show' : ''}" id="exp-${q.id}">
-      ${q.explain}
-      ${q.trap && locked ? `<div style="margin-top:8px"><span class="trap-badge">Trap: ${q.trap}</span></div>` : ''}
-      ${q.optionExplain && locked ? `<div class="option-explains">${q.choices.map((c,i) => `<div class="opt-explain ${i === (q.qtype === 'multi' ? -1 : q.answer) || (q.answerSet && q.answerSet.includes(i)) ? 'opt-correct' : 'opt-wrong'}"><b>${String.fromCharCode(65+i)}.</b> ${q.optionExplain[i]}</div>`).join('')}</div>` : ''}
+      ${q.explain || ''}
+      ${q.requirementSignal && locked ? `<div class="req-signal">Requirement signal: ${q.requirementSignal}</div>` : ''}
+      ${q.decisionRule && locked ? `<div class="decision-rule">Decision rule: ${q.decisionRule}</div>` : ''}
+      ${(q.examTrap || q.trap) && locked ? `<div style="margin-top:8px"><span class="trap-badge">Trap: ${q.examTrap ?? q.trap}</span></div>` : ''}
+      ${q.optionExplain && q.choices && locked ? `<div class="option-explains">${q.choices.map((c,i) => `<div class="opt-explain ${i === (q.qtype === 'multi' ? -1 : q.answer) || (q.answerSet && q.answerSet.includes(i)) ? 'opt-correct' : 'opt-wrong'}"><b>${String.fromCharCode(65+i)}.</b> ${q.optionExplain[i]}</div>`).join('')}</div>` : ''}
     </div>`}
   `;
   return card;
@@ -3676,13 +3882,29 @@ document.getElementById('quiz').addEventListener('click', (e) => {
   const q = QUESTIONS.find(x => x.id === qid);
   if (!q) return;
   const isMulti = q.qtype === 'multi';
+  const isMatrix = q.qtype === 'matrix';
+  const isMatching = q.qtype === 'matching';
 
   if (action === 'submit') {
     const confChecked = document.querySelector(`input[name="conf-${qid}"]:checked`);
     const confidence = confChecked ? confChecked.value : null;
 
-    let chosen, chosenSet, correct;
-    if (isMulti) {
+    let chosen, chosenSet, correct, chosenStatements, chosenMap;
+    if (isMatrix) {
+      chosenStatements = q.statements.map((s, i) => {
+        const sel = document.querySelector(`input[name="${qid}-stmt-${i}"]:checked`);
+        return sel ? sel.value === 'yes' : null;
+      });
+      if (chosenStatements.includes(null)) { alert('Answer Yes/No for every statement.'); return; }
+      correct = chosenStatements.every((v, i) => v === q.statements[i].correct);
+    } else if (isMatching) {
+      chosenMap = q.scenarios.map((s, i) => {
+        const sel = document.querySelector(`input[name="${qid}-match-${i}"]:checked`);
+        return sel ? parseInt(sel.value, 10) : null;
+      });
+      if (chosenMap.includes(null)) { alert('Match every scenario.'); return; }
+      correct = chosenMap.every((v, i) => v === q.correctMap[i]);
+    } else if (isMulti) {
       const checkboxes = document.querySelectorAll(`input[name="${qid}"]:checked`);
       chosenSet = Array.from(checkboxes).map(cb => parseInt(cb.value, 10)).sort();
       const answerSetSorted = [...q.answerSet].sort();
@@ -3697,12 +3919,18 @@ document.getElementById('quiz').addEventListener('click', (e) => {
       correct = chosen === q.answer;
     }
 
+    recordAttempt(qid, correct);
+
+    const entry = isMatrix ? { chosenStatements, correct, confidence }
+      : isMatching ? { chosenMap, correct, confidence }
+      : { chosen, chosenSet, correct, confidence };
+
     if (mockState.active) {
-      mockState.progress[qid] = { chosen, chosenSet, correct, confidence };
+      mockState.progress[qid] = entry;
       updateMockAnswered();
       render();
     } else if (retrySession.active) {
-      progress[qid] = { chosen, chosenSet, correct, confidence, ts: Date.now() };
+      progress[qid] = { ...entry, ts: Date.now() };
       saveProgress();
       retrySession.qids.delete(qid);
       updateRetryBanner();
@@ -3714,7 +3942,7 @@ document.getElementById('quiz').addEventListener('click', (e) => {
         replaceCard(qid);
       }
     } else {
-      progress[qid] = { chosen, chosenSet, correct, confidence, ts: Date.now() };
+      progress[qid] = { ...entry, ts: Date.now() };
       saveProgress();
       maybeRemindSave();
       replaceCard(qid);
@@ -3855,6 +4083,8 @@ document.getElementById('mock-exam-e').addEventListener('click', () => startMock
 document.getElementById('mock-exam-f').addEventListener('click', () => startMockExam('F'));
 document.getElementById('mock-exam-g').addEventListener('click', () => startMockExam('G'));
 document.getElementById('mock-exam-final').addEventListener('click', () => startMockExam('final'));
+document.getElementById('brutal-30').addEventListener('click', () => startBrutalMode(30));
+document.getElementById('brutal-63').addEventListener('click', () => startBrutalMode(63));
 document.getElementById('mock-submit').addEventListener('click', () => endMockExam(false));
 document.getElementById('mock-abort').addEventListener('click', abortMockExam);
 document.getElementById('retry-abort-btn').addEventListener('click', () => {
@@ -3955,12 +4185,141 @@ function topicToObjKey(topic, domain) {
   return domain + '.' + m[1];
 }
 
+const DOMAINS = ['D1','D2','D3','D4','D5','D6','D7'];
+const domNames = { D1:'Solution Design & Architecture', D2:'Models, Prompting & Context', D3:'Integration & Tool Use', D4:'Evaluation, Testing & Optimization', D5:'Governance, Safety & Risk', D6:'Stakeholder Communication & Lifecycle', D7:'Developer Productivity' };
+const domWeights = { D1:17, D2:13, D3:19, D4:16, D5:14, D6:14, D7:7 };
+
+function computeDomainStats() {
+  const domStats = {};
+  DOMAINS.forEach(d => { domStats[d] = {t:0,c:0,ans:0}; });
+  QUESTIONS.forEach(q => {
+    if (!domStats[q.domain]) return;
+    domStats[q.domain].t++;
+    const p = progress[q.id];
+    if (p) { domStats[q.domain].ans++; if (p.correct) domStats[q.domain].c++; }
+  });
+  return domStats;
+}
+
+// Does a wrong multi/matrix/matching answer show partial understanding (some but not all
+// sub-parts right)? Used to auto-tag 'Multi-select Partial Reasoning', overriding whatever
+// mistakeTag/trap the question author set, since this is a structural signal, not a content judgment.
+function hasPartialCredit(q, p) {
+  if (!p || p.correct) return false;
+  if (q.qtype === 'multi' && p.chosenSet && q.answerSet) {
+    const chosenSet = new Set(p.chosenSet);
+    return q.answerSet.some(a => chosenSet.has(a));
+  }
+  if (q.qtype === 'matrix' && p.chosenStatements && q.statements) {
+    const matches = p.chosenStatements.filter((v,i) => v === q.statements[i].correct).length;
+    return matches > 0 && matches < q.statements.length;
+  }
+  if (q.qtype === 'matching' && p.chosenMap && q.correctMap) {
+    const matches = p.chosenMap.filter((v,i) => v === q.correctMap[i]).length;
+    return matches > 0 && matches < q.correctMap.length;
+  }
+  return false;
+}
+
+// Prep Readiness Index — a weighted composite, not a raw %. Weights are a starting proposal
+// (tunable here, not hardcoded into the math below). Each component is excluded if it doesn't
+// meet its min-N gate, and the remaining included weights are renormalized — so an early-prep
+// learner sees "not enough data" instead of a misleading score built off one shaky signal.
+const READINESS_WEIGHTS = {
+  coldFirstAttempt: 18, levelHigh: 16, domainCoverage: 10, matrixMatching: 8,
+  multiSelect: 10, lifecycle: 8, confidenceCalibration: 10, repeatedMistakes: 8, finalSim: 12,
+};
+const READINESS_MIN_N = {
+  coldFirstAttempt: 20, levelHigh: 8, domainCoverage: 3 /* per domain */, matrixMatching: 5,
+  multiSelect: 10, lifecycle: 5, confidenceCalibration: 15, repeatedMistakes: 5, finalSim: 1,
+};
+
+function computeReadinessIndex() {
+  const components = {};
+
+  // 1. Cold first-attempt accuracy
+  const attemptEntries = Object.values(attemptHistory);
+  if (attemptEntries.length >= READINESS_MIN_N.coldFirstAttempt) {
+    const correctFirst = attemptEntries.filter(a => a.firstCorrect).length;
+    components.coldFirstAttempt = { score: 100 * correctFirst / attemptEntries.length, n: attemptEntries.length };
+  }
+
+  // 2. Level 3/4 accuracy
+  const levelHighQs = QUESTIONS.filter(q => (q.level === 3 || q.level === 4) && progress[q.id]);
+  if (levelHighQs.length >= READINESS_MIN_N.levelHigh) {
+    const c = levelHighQs.filter(q => progress[q.id].correct).length;
+    components.levelHigh = { score: 100 * c / levelHighQs.length, n: levelHighQs.length };
+  }
+
+  // 3. Domain coverage — exam-weighted accuracy across domains with enough data, renormalized
+  const domStats = computeDomainStats();
+  const qualifyingDomains = DOMAINS.filter(d => domStats[d].ans >= READINESS_MIN_N.domainCoverage);
+  if (qualifyingDomains.length >= 3) {
+    const totalW = qualifyingDomains.reduce((s,d) => s + domWeights[d], 0);
+    const weighted = qualifyingDomains.reduce((s,d) => s + (domWeights[d]/totalW) * (100*domStats[d].c/domStats[d].ans), 0);
+    components.domainCoverage = { score: weighted, n: qualifyingDomains.reduce((s,d)=>s+domStats[d].ans,0) };
+  }
+
+  // 4. Matrix/matching accuracy
+  const mmQs = QUESTIONS.filter(q => (q.qtype === 'matrix' || q.qtype === 'matching') && progress[q.id]);
+  if (mmQs.length >= READINESS_MIN_N.matrixMatching) {
+    const c = mmQs.filter(q => progress[q.id].correct).length;
+    components.matrixMatching = { score: 100 * c / mmQs.length, n: mmQs.length };
+  }
+
+  // 5. Multi-select accuracy
+  const multiQs = QUESTIONS.filter(q => q.qtype === 'multi' && progress[q.id]);
+  if (multiQs.length >= READINESS_MIN_N.multiSelect) {
+    const c = multiQs.filter(q => progress[q.id].correct).length;
+    components.multiSelect = { score: 100 * c / multiQs.length, n: multiQs.length };
+  }
+
+  // 6. Lifecycle-question accuracy
+  const lifecycleQs = QUESTIONS.filter(q => q.lifecycleStage && progress[q.id]);
+  if (lifecycleQs.length >= READINESS_MIN_N.lifecycle) {
+    const c = lifecycleQs.filter(q => progress[q.id].correct).length;
+    components.lifecycle = { score: 100 * c / lifecycleQs.length, n: lifecycleQs.length };
+  }
+
+  // 7. Confidence calibration
+  const confTagged = QUESTIONS.filter(q => progress[q.id] && progress[q.id].confidence);
+  if (confTagged.length >= READINESS_MIN_N.confidenceCalibration) {
+    const dangerous = confTagged.filter(q => !progress[q.id].correct && progress[q.id].confidence === 'high').length;
+    const lucky = confTagged.filter(q => progress[q.id].correct && progress[q.id].confidence === 'low').length;
+    const pctDangerous = 100 * dangerous / confTagged.length;
+    const pctLucky = 100 * lucky / confTagged.length;
+    components.confidenceCalibration = { score: Math.max(0, Math.min(100, 100 - (pctDangerous*1.5 + pctLucky*0.5))), n: confTagged.length };
+  }
+
+  // 8. Repeated-mistake frequency
+  const repeated = Object.entries(attemptHistory).filter(([,a]) => a.attempts >= 2);
+  if (repeated.length >= READINESS_MIN_N.repeatedMistakes) {
+    const stillWrong = repeated.filter(([qid]) => progress[qid] && !progress[qid].correct).length;
+    components.repeatedMistakes = { score: 100 - (100 * stillWrong / repeated.length), n: repeated.length };
+  }
+
+  // 9. Latest Final Sim score (scaled is out of 1000)
+  const finalSimRecords = mockHistory.filter(m => m.label === '🔒 Final Sim');
+  if (finalSimRecords.length >= READINESS_MIN_N.finalSim) {
+    const latest = finalSimRecords[finalSimRecords.length - 1];
+    components.finalSim = { score: latest.scaled / 10, n: 1 };
+  }
+
+  const includedKeys = Object.keys(components);
+  const totalAnswered = QUESTIONS.filter(q => progress[q.id]).length;
+  if (totalAnswered < 20 || includedKeys.length < 3) {
+    return { ready: false, components, totalAnswered, componentsIncluded: includedKeys.length };
+  }
+
+  const totalWeight = includedKeys.reduce((s,k) => s + READINESS_WEIGHTS[k], 0);
+  const rawScore = includedKeys.reduce((s,k) => s + (READINESS_WEIGHTS[k] * components[k].score), 0) / totalWeight;
+  const bucket = rawScore < 65 ? 'Not Ready' : rawScore < 73 ? 'Borderline' : rawScore < 79 ? 'Possible Pass' : rawScore < 85 ? 'Exam Ready' : 'Strongly Ready';
+  return { ready: true, score: Math.round(rawScore), bucket, components, totalAnswered, componentsIncluded: includedKeys.length };
+}
+
 function renderProgress() {
   const el = document.getElementById('progress-body');
   if (!el) return;
-  const DOMAINS = ['D1','D2','D3','D4','D5','D6','D7'];
-  const domNames = { D1:'Solution Design & Architecture', D2:'Models, Prompting & Context', D3:'Integration & Tool Use', D4:'Evaluation, Testing & Optimization', D5:'Governance, Safety & Risk', D6:'Stakeholder Communication & Lifecycle', D7:'Developer Productivity' };
-  const domWeights = { D1:17, D2:13, D3:19, D4:16, D5:14, D6:14, D7:7 };
 
   const total = QUESTIONS.length;
   const answered = QUESTIONS.filter(q => progress[q.id]).length;
@@ -3977,13 +4336,23 @@ function renderProgress() {
   const mockPracticePct = mockQs.length ? Math.round(100*mockCorrect/mockQs.length) : null;
   const blindSpots = QUESTIONS.filter(q => { const p = progress[q.id]; return p && !p.correct && p.confidence === 'high'; }).length;
   const closeCall = QUESTIONS.filter(q => { const p = progress[q.id]; return p && p.correct && p.confidence === 'low'; }).length;
+  const knowledgeGaps = QUESTIONS.filter(q => { const p = progress[q.id]; return p && !p.correct && p.confidence === 'low'; }).length;
 
-  // Mistake taxonomy breakdown
+  // Mistake taxonomy breakdown — most recent 100 wrong answers. Auto-detected
+  // 'Multi-select Partial Reasoning' overrides the authored mistakeTag; falls back to the
+  // legacy freeform `trap` string (kept as its own bucket, not folded into the fixed taxonomy)
+  // when neither is set.
+  const RECENCY_WINDOW = 100;
+  const recentWrong = QUESTIONS
+    .map(q => ({ q, p: progress[q.id] }))
+    .filter(({p}) => p && !p.correct)
+    .sort((a,b) => (b.p.ts||0) - (a.p.ts||0))
+    .slice(0, RECENCY_WINDOW);
   const trapCounts = {};
-  QUESTIONS.forEach(q => {
-    const p = progress[q.id];
-    if (!p || p.correct || !q.trap) return;
-    trapCounts[q.trap] = (trapCounts[q.trap] || 0) + 1;
+  recentWrong.forEach(({q,p}) => {
+    const tag = hasPartialCredit(q,p) ? 'Multi-select Partial Reasoning' : (q.mistakeTag || q.trap);
+    if (!tag) return;
+    trapCounts[tag] = (trapCounts[tag] || 0) + 1;
   });
   const trapTotal = Object.values(trapCounts).reduce((a,b) => a+b, 0);
 
@@ -4009,14 +4378,7 @@ function renderProgress() {
   }).join('');
 
   // Domain bars
-  const domStats = {};
-  DOMAINS.forEach(d => { domStats[d] = {t:0,c:0,ans:0}; });
-  QUESTIONS.forEach(q => {
-    if (!domStats[q.domain]) return;
-    domStats[q.domain].t++;
-    const p = progress[q.id];
-    if (p) { domStats[q.domain].ans++; if (p.correct) domStats[q.domain].c++; }
-  });
+  const domStats = computeDomainStats();
   const domRows = DOMAINS.map(d => {
     const s = domStats[d];
     const dpct = s.ans ? Math.round(100*s.c/s.ans) : null;
@@ -4044,7 +4406,7 @@ function renderProgress() {
 
   const trapSection = trapTotal > 0 ? `
   <div class="progress-row">
-    <h3>Mistake Taxonomy <span style="font-size:11px;color:var(--muted);font-weight:400">(wrong answers with trap classification)</span></h3>
+    <h3>Mistake Taxonomy <span style="font-size:11px;color:var(--muted);font-weight:400">(${trapTotal} classified wrong answers, most recent ${RECENCY_WINDOW})</span></h3>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
       ${Object.entries(trapCounts).sort((a,b)=>b[1]-a[1]).map(([trap,n]) => `
         <div style="display:flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px">
@@ -4074,14 +4436,41 @@ function renderProgress() {
         </div>
         <div class="perf-card">
           <div class="perf-val" style="color:#f59e0b">${blindSpots}</div>
-          <div class="perf-label">🎯 Blind spots<br><span style="font-size:10px">wrong + high confidence</span></div>
+          <div class="perf-label">🎯 Dangerous errors<br><span style="font-size:10px">wrong + high confidence</span></div>
+        </div>
+        <div class="perf-card">
+          <div class="perf-val" style="color:var(--red)">${knowledgeGaps}</div>
+          <div class="perf-label">📉 Knowledge gaps<br><span style="font-size:10px">wrong + low confidence</span></div>
         </div>
         <div class="perf-card">
           <div class="perf-val" style="color:var(--muted)">${closeCall}</div>
-          <div class="perf-label">⚠️ Close calls<br><span style="font-size:10px">correct + low confidence</span></div>
+          <div class="perf-label">⚠️ Lucky answers<br><span style="font-size:10px">correct + low confidence</span></div>
         </div>
       </div>
     </div>
+    ${(() => {
+      const r = computeReadinessIndex();
+      if (!r.ready) {
+        return `<div class="progress-row">
+          <h3>Prep Readiness Index</h3>
+          <div style="color:var(--muted);font-size:14px">Not enough data yet — answer at least 20 questions across at least 3 of the signals below (currently ${r.totalAnswered} answered, ${r.componentsIncluded}/9 signals have enough data).</div>
+        </div>`;
+      }
+      const bucketColor = r.score < 65 ? 'var(--red)' : r.score < 73 ? '#d29922' : r.score < 79 ? 'var(--blue)' : 'var(--green)';
+      const labels = { coldFirstAttempt:'Cold first-attempt accuracy', levelHigh:'Level 3/4 accuracy', domainCoverage:'Domain coverage (exam-weighted)', matrixMatching:'Matrix/matching accuracy', multiSelect:'Multi-select accuracy', lifecycle:'Lifecycle-question accuracy', confidenceCalibration:'Confidence calibration', repeatedMistakes:'Repeated-mistake avoidance', finalSim:'Latest Final Sim score' };
+      const rows = Object.entries(r.components).map(([k,c]) => `
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--muted)">
+          <span>${labels[k]} (n=${c.n})</span><span>${Math.round(c.score)}%</span>
+        </div>`).join('');
+      return `<div class="progress-row">
+        <h3>Prep Readiness Index <span style="font-size:11px;color:var(--muted);font-weight:400">— a weighted composite, not a raw %; not a literal pass probability</span></h3>
+        <div style="display:flex;align-items:baseline;gap:12px;margin:8px 0">
+          <span style="font-size:32px;font-weight:700;color:${bucketColor}">${r.score}</span>
+          <span style="font-size:15px;font-weight:600;color:${bucketColor}">${r.bucket}</span>
+        </div>
+        <div style="margin-top:8px">${rows}</div>
+      </div>`;
+    })()}
     <div class="progress-row">
       <h3>63-Objective Mastery Heatmap <span style="font-size:11px;color:var(--muted);font-weight:400">— green ≥75% · yellow 50–74% · red &lt;50%</span></h3>
       <div class="obj-heatmap">${heatmapCells}</div>
