@@ -210,6 +210,20 @@
     background: rgba(248, 81, 73, 0.15);
     color: var(--red);
   }
+  /* Revision priority tags — reuses the trap-badge/conf-badge pill visual language */
+  .pri-badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  .pri-badge.pri-must { background: rgba(63, 185, 80, 0.15); color: var(--green); }
+  .pri-badge.pri-trap { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+  .pri-badge.pri-know { background: rgba(88, 166, 255, 0.15); color: var(--blue); }
+  .pri-badge.pri-ref { background: rgba(139, 148, 158, 0.15); color: var(--muted); }
   .confidence-picker {
     display: flex;
     gap: 14px;
@@ -7809,8 +7823,15 @@ The four competencies apply across all three engagement modes (Automation, Augme
 `;
 
 function mdToHtml(md) {
+  const PRI_VARIANT = { 'MUST KNOW': 'must', 'COMMON TRAP': 'trap', 'KNOW': 'know', 'REFERENCE': 'ref' };
   const inline = t => t
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // priority tag badge: {{tag: MUST KNOW}} / {{tag: COMMON TRAP}} / {{tag: KNOW}} / {{tag: REFERENCE}}
+    .replace(/\{\{tag:\s*([^}]+)\}\}/g, (_, label) => {
+      const l = label.trim();
+      const variant = PRI_VARIANT[l] || 'know';
+      return `<span class="pri-badge pri-${variant}">${l}</span>`;
+    })
     .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
     .replace(/\*([^*\n]+)\*/g,'<em>$1</em>')
     .replace(/`([^`]+)`/g,'<code>$1</code>');
@@ -8001,12 +8022,32 @@ function addChapterNav(bodyEl) {
   bodyEl.prepend(nav);
 }
 
+// Persists <details class="cs-collapse"> open/closed state across reloads, keyed by a
+// slug of the summary text (stable across re-renders since content order can shift).
+const COLLAPSE_STATE_KEY = 'claude-cert-p-collapse-state';
+let collapseState = {};
+try { collapseState = JSON.parse(__storage.getItem(COLLAPSE_STATE_KEY) || '{}'); } catch(e) { collapseState = {}; }
+
+function restoreCollapseState(bodyEl) {
+  bodyEl.querySelectorAll('details.cs-collapse').forEach(function(details) {
+    const summary = details.querySelector('summary');
+    if (!summary) return;
+    const key = summary.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 60);
+    if (collapseState[key]) details.open = true;
+    details.addEventListener('toggle', function() {
+      collapseState[key] = details.open;
+      try { __storage.setItem(COLLAPSE_STATE_KEY, JSON.stringify(collapseState)); } catch(e) {}
+    });
+  });
+}
+
 function renderCheatsheet() {
   const el = document.getElementById('cheatsheet-body');
   if (!el || el.dataset.loaded) return;
   el.dataset.loaded = '1';
   el.innerHTML = mdToHtml(preprocessMD(CHEATSHEET_MD));
   addChapterNav(el);
+  restoreCollapseState(el);
 }
 
 function renderBlueprint() {
@@ -8015,6 +8056,7 @@ function renderBlueprint() {
   el.dataset.loaded = '1';
   el.innerHTML = mdToHtml(BLUEPRINT_MD);
   addChapterNav(el);
+  restoreCollapseState(el);
 }
 
 function renderRevision() {
@@ -8023,6 +8065,7 @@ function renderRevision() {
   el.dataset.loaded = '1';
   el.innerHTML = mdToHtml(preprocessMD(REVISION_MD));
   addChapterNav(el);
+  restoreCollapseState(el);
 }
 
 // ===== Final Check =====
