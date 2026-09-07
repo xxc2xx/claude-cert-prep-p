@@ -1490,7 +1490,7 @@ const QUESTIONS = [
   {
     id: "Q034", block: "🔴 D1 · Solution Design & Architecture", topic: "1.6 — Align solutions to business value pillars (efficie", domain: "D1", form: "Bonus", tier: "exam", qtype: "single", difficulty: "Hard",
     q: `A business sponsor demands '100% correct answers' as an SLA for an open-ended generative assistant. What is the architect's best response?`,
-    choices: ["Accept the SLA and use the largest model", "Reframe to measurable availability/latency plus quality thresholds on a defined eval set, with human routing for high-risk cases", "Add a disclaimer and keep 100%", "Remove the SLA"],
+    choices: ["Accept the 100% correctness SLA and commit to using the largest available model, on the assumption that maximum capability is enough to guarantee it", "Reframe to measurable availability/latency plus quality thresholds on a defined eval set, with human routing for high-risk cases", "Add a disclaimer noting the system may occasionally be wrong, while still formally committing to the 100% correctness SLA the sponsor originally requested", "Remove any SLA from the agreement entirely, declining to commit to any measurable availability, latency, or quality target for the generative assistant"],
     answer: 1,
     explain: `Reframe to measurable availability/latency plus quality thresholds on a defined eval set, with human routing for high-risk cases. Probabilistic systems should not promise per-response correctness; use measurable quality bands and operational controls.`,
   },
@@ -1671,14 +1671,14 @@ const QUESTIONS = [
   {
     id: "Q059", block: "🔴 D2 · Models, Prompting & Context", topic: "2.5 — Implement prompt reuse strategies (caching, modula", domain: "D2", form: "Bonus", tier: "exam", qtype: "single", difficulty: "Hard",
     q: `Two teams independently maintain near-identical policy prompts and frequently drift apart. What is the best architectural response?`,
-    choices: ["Create a versioned shared prompt module with ownership and tests", "Ask both teams to remember to copy changes", "Add more examples to both copies", "Ignore drift"],
+    choices: ["Create a versioned shared prompt module with ownership and tests", "Ask both teams to remember to manually copy any policy changes over to each other's prompt whenever one of them makes an update", "Add more few-shot examples to both teams' near-identical prompts independently, reinforcing each copy's behavior without addressing why the two are drifting apart", "Ignore the drift between the two teams' prompts, treating the near-identical policies as close enough that the differences aren't worth reconciling"],
     answer: 0,
     explain: `Create a versioned shared prompt module with ownership and tests. Shared versioned assets reduce divergence and support controlled evaluation of changes.`,
   },
   {
     id: "Q060", block: "🔴 D2 · Models, Prompting & Context", topic: "2.5 — Implement prompt reuse strategies (caching, modula", domain: "D2", form: "Bonus", tier: "exam", qtype: "single", difficulty: "Medium",
     q: `A cache hit rate collapses after developers insert a unique request ID near the start of the prompt. What should they do?`,
-    choices: ["Move variable request metadata after the stable cacheable prefix when feasible", "Add more unique IDs", "Disable caching and use the largest model", "Increase output tokens"],
+    choices: ["Move variable request metadata after the stable cacheable prefix when feasible", "Add even more unique identifiers near the start of the prompt, expanding the variable metadata block that's already breaking the cache hit rate", "Disable prompt caching altogether and switch to the largest available model, absorbing higher per-request cost rather than restructuring where the unique ID sits", "Increase the maximum output token limit, giving responses more room to be generated even though the actual problem is the unique ID breaking the cached prefix"],
     answer: 0,
     explain: `Move variable request metadata after the stable cacheable prefix when feasible. Variable content before stable material prevents prefix reuse.`,
   },
@@ -1950,7 +1950,7 @@ const QUESTIONS = [
   {
     id: "Q098", block: "🔴 D3 · Integration & Tool Use", topic: "3.8 — Evaluate progressive discovery vs. monolithic cont", domain: "D3", form: "Bonus", tier: "exam", qtype: "single", difficulty: "Hard",
     q: `A monolithic prompt includes full schemas for 120 rarely used tools. What combined strategy best addresses the issue?`,
-    choices: ["Progressive tool discovery plus a small default tool surface", "Add more schema text", "Use higher temperature", "Keep all tools and shorten descriptions until ambiguous"],
+    choices: ["Progressive tool discovery plus a small default tool surface", "Add more detailed schema text to each of the 120 tool definitions, expanding the documentation even though most of them are already rarely used", "Use a higher temperature setting, giving the model more varied responses that might help it navigate the 120 rarely-used tool schemas more creatively", "Keep all 120 tools loaded by default and shorten their descriptions until they become ambiguous, trading clarity for a smaller token footprint"],
     answer: 0,
     explain: `Progressive tool discovery plus a small default tool surface. Load capabilities and context when needed rather than paying the cost and risk up front.`,
   },
@@ -2170,14 +2170,14 @@ const QUESTIONS = [
   {
     id: "Q129", block: "🔴 D4 · Evaluation, Testing & Optimization", topic: "4.6 — Monitor system performance using logging and obser", domain: "D4", form: "Bonus", tier: "exam", qtype: "single", difficulty: "Hard",
     q: `A safety incident cannot be reconstructed because prompt version, model version and retrieved sources were not recorded. What should change?`,
-    choices: ["Version and log the key artifacts/identifiers needed for reproducibility and audit", "Log only final text", "Remove versioning to simplify operations", "Ask users to remember the details"],
+    choices: ["Version and log the key artifacts/identifiers needed for reproducibility and audit", "Log only the final response text going forward, continuing to omit the prompt version, model version, and retrieved sources that made this incident impossible to reconstruct", "Remove versioning from the system to simplify operations, eliminating the tracking overhead rather than adding the artifact logging needed for future reproducibility", "Ask users to remember and report the details of what happened during an incident, relying on their recollection rather than system-recorded artifacts"],
     answer: 0,
     explain: `Version and log the key artifacts/identifiers needed for reproducibility and audit. Reproducibility requires knowing which configuration and evidence produced the output.`,
   },
   {
     id: "Q130", block: "🔴 D4 · Evaluation, Testing & Optimization", topic: "4.6 — Monitor system performance using logging and obser", domain: "D4", form: "Bonus", tier: "exam", qtype: "single", difficulty: "Medium",
     q: `Which monitoring view is most useful to an operations team?`,
-    choices: ["A dashboard combining availability, latency, error categories, quality signals and cost at the task level", "A list of model marketing claims", "A static architecture diagram only", "A prompt-length leaderboard"],
+    choices: ["A dashboard combining availability, latency, error categories, quality signals and cost at the task level", "A list of the model provider's marketing claims about the model's capabilities, compiled as a reference for what the system is theoretically capable of", "A static architecture diagram only, showing the system's components and data flow without any live operational data about how it's actually performing", "A leaderboard ranking the system's prompts by length, tracked as a way to see which prompts are the most detailed and comprehensive"],
     answer: 0,
     explain: `A dashboard combining availability, latency, error categories, quality signals and cost at the task level. Operational monitoring should cover service health, quality and economics together.`,
   },
@@ -2376,7 +2376,7 @@ const QUESTIONS = [
   {
     id: "Q158", block: "🔴 D5 · Governance, Safety & Risk", topic: "5.5 — Address ethical AI considerations (bias, fairness,", domain: "D5", form: "Bonus", tier: "exam", qtype: "single", difficulty: "Hard",
     q: `Human reviewers consistently accept model outputs more readily when the model expresses high confidence, even when confidence is poorly calibrated. What risk is present?`,
-    choices: ["Automation bias; redesign review cues and measure reviewer behavior", "Better explainability", "Lower token usage", "Retrieval drift"],
+    choices: ["Automation bias; redesign review cues and measure reviewer behavior", "Better explainability, since reviewers responding more readily to confident-sounding outputs suggests the model is communicating its reasoning more clearly", "Lower token usage, since reviewers accepting confident outputs faster means less time spent reading through the model's full response before making a decision", "Retrieval drift, where the underlying knowledge base has gradually changed in ways that happen to correlate with how confidently the model phrases its outputs"],
     answer: 0,
     explain: `Automation bias; redesign review cues and measure reviewer behavior. Human-in-the-loop systems can introduce human behavioral biases that must be designed and measured.`,
   },
@@ -2575,7 +2575,7 @@ const QUESTIONS = [
   {
     id: "Q186", block: "🔴 D6 · Stakeholder Communication & Lifecycle", topic: "6.5 — Support lifecycle phases (discovery, design, hando", domain: "D6", form: "Bonus", tier: "exam", qtype: "single", difficulty: "Medium",
     q: `After launch, repeated failures cluster around a new document format. Which lifecycle activity is appropriate?`,
-    choices: ["Feed the failures into evaluation, update the design/prompt/schema as needed, validate, and iterate", "Return to discovery from zero", "Ignore them because the system is live", "Replace the entire architecture automatically"],
+    choices: ["Feed the failures into evaluation, update the design/prompt/schema as needed, validate, and iterate", "Return to the discovery phase from zero, restarting the full requirements-gathering process rather than treating the new-format failures as a targeted iteration", "Ignore the clustered failures because the system is already live in production, treating post-launch issues as out of scope for further design work", "Replace the entire system architecture automatically in response to the clustering, rebuilding from scratch rather than addressing the specific new-format failure"],
     answer: 0,
     explain: `Feed the failures into evaluation, update the design/prompt/schema as needed, validate, and iterate. Monitoring should drive controlled iteration.`,
   },
@@ -2669,14 +2669,14 @@ const QUESTIONS = [
   {
     id: "Q199", block: "🔴 D7 · Developer Productivity", topic: "7.3 — Support debugging and operational issue resolution", domain: "D7", form: "Bonus", tier: "exam", qtype: "multi", difficulty: "Hard",
     q: `Select TWO pieces of data most useful when reproducing an operational Claude failure.`,
-    choices: ["Prompt/context/tool inputs and versions from the failing trace", "Relevant external service responses/errors", "The developer's favorite editor theme", "Number of social media followers", "Office temperature"],
+    choices: ["Prompt/context/tool inputs and versions from the failing trace", "Relevant external service responses/errors", "The developer's favorite code editor theme and personal tooling preferences, unrelated to what actually happened during the failing Claude execution", "The number of social media followers the product or team has, a marketing metric with no bearing on reproducing a specific operational failure", "The office temperature at the time the incident occurred, an environmental detail unrelated to the prompt, context, or tool inputs involved in the failure"],
     answerSet: [0, 1], answer: 0,
     explain: `Correct (A, B): Prompt/context/tool inputs and versions from the failing trace and Relevant external service responses/errors. Reproduction depends on the state and dependencies involved in the failing execution.`,
   },
   {
     id: "Q200", block: "🔴 D7 · Developer Productivity", topic: "7.3 — Support debugging and operational issue resolution", domain: "D7", form: "Bonus", tier: "exam", qtype: "single", difficulty: "Medium",
     q: `An on-call engineer responds to every incident by retrying the request, which often succeeds, but the same incident recurs weekly. What should happen?`,
-    choices: ["Use traces to identify and fix the structural root cause instead of relying on retries as the permanent solution", "Increase retries forever", "Disable alerts", "Remove incident history"],
+    choices: ["Use traces to identify and fix the structural root cause instead of relying on retries as the permanent solution", "Increase the number of automatic retries even further, relying on this workaround indefinitely as the standard response to the weekly recurring incident", "Disable the alerts for this recurring incident, reducing the noise from the weekly pattern rather than investigating why it keeps happening", "Remove the incident's history from the tracking system, clearing the record of past occurrences rather than using it to identify the recurring root cause"],
     answer: 0,
     explain: `Use traces to identify and fix the structural root cause instead of relying on retries as the permanent solution. Retries can mitigate transient failure but should not replace root-cause resolution for recurring defects.`,
   },
