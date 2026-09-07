@@ -6233,6 +6233,18 @@ Over-assigning to Claude is the most common and most expensive early mistake —
 
 **Decision shortcut:** if a human grader would need judgment to score it, use a calibrated judge; if a human grader would just check a fact, use code.
 
+**Retrieval Failure vs. Model Reasoning Failure**
+
+|   | Retrieval Failure | Model Reasoning Failure |
+|---|---|---|
+| Best diagnosed by | Checking what was actually retrieved (recall, freshness, relevance) against what should have been | Checking whether correct evidence was retrieved but the model still reasoned incorrectly over it |
+| Main signal | Retrieval precision/recall dropped, or the index is stale — the model is doing fine with what it was given | Retrieval metrics are stable and the right evidence was present, but the answer is still wrong |
+| Fix | Re-index, adjust chunking/indexing strategy, fix freshness pipeline (Pillar B) | Prompt clarity, technique (chain-of-thought), or a model-tier eval-gated change (Pillar C/G) |
+| Exam signal | "retrieval recall stable but generation accuracy dropped only on multi-document questions" → check chunking/linking metadata, not the model | "correct chunks were retrieved, output still wrong" → reasoning failure, not retrieval |
+| Common trap | Assumed to be a model problem and "fixed" with a bigger model, when the evidence supplied was already wrong or incomplete | Assumed to be a retrieval problem and "fixed" by re-indexing, when the model already had what it needed |
+
+**Decision shortcut:** inspect what was actually retrieved before touching the model — if the right evidence was present and the answer is still wrong, it's a reasoning failure; if the evidence itself was wrong, stale, or incomplete, it's a retrieval failure.
+
 ---
 
 ### E — Checkpoint
