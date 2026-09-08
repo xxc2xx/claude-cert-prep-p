@@ -645,6 +645,8 @@
   .notes-body p { margin: 0 0 10px; }
   .notes-body ul, .notes-body ol { margin: 0 0 12px 20px; }
   .notes-body li { margin-bottom: 4px; }
+  .notes-body ol li { margin-bottom: 14px; }
+  .notes-body ol li:last-child { margin-bottom: 0; }
   .notes-body code {
     background: var(--panel-2);
     padding: 2px 6px;
@@ -5142,31 +5144,31 @@ const REVISION_MD = `# CCAR-P — Architect's Field Guide
 
 ### Top 25 Architect Decision Rules
 
-1. Use the simplest pattern — augmented call, then workflow, then agent — that predictability, error-cost, and observability requirements allow. Autonomy is earned by genuine unpredictability, not granted by default.
-2. Reach for multi-agent only when work genuinely exceeds one context or independent units can run in parallel — and always build a coverage check at synthesis before trusting the summary.
-3. The governing decomposition question is "where do the model's actual properties argue for Claude over the system that already does this right?" — not "where can Claude help?"
-4. Use retrieval when selecting the right information is part of the problem; use long context when the information itself comfortably fits and retrieval adds little value.
-5. If the answer changes based on "what's true right now" rather than "what does the reference material say," it needs a tool call to the system of record, not a retrieval index.
-6. Fine-tuning is the last resort in a sequence — prompt optimization, then tool use/retrieval, then a stronger pattern, then fine-tuning.
-7. Reach for the lightest prompting technique that meets the requirement — heavier techniques cost tokens and latency on every call, forever.
-8. Static content before dynamic content, always — that ordering is what makes prompt caching work at all.
-9. Gate every model change with an eval before shipping — a model swap looks like a config change but rewrites how the whole product behaves; treat it as a release.
-10. If Claude confuses two tools, the fix is almost always clarifying or separating their responsibilities — not adding more context or a stronger model.
-11. Reduce capability bloat at the source — expose fewer tools by default, discover/load specialized ones only when needed.
-12. Prefer the simplest tool-connection mechanism that meets reuse requirements — MCP earns its complexity only with genuine multi-client reuse.
-13. Match the evaluation method to the behavior being measured — code-based wherever the answer is unambiguous, judge-based where interpretation is required, human review as the calibration source.
-14. A usable A/B hypothesis names the treatment, the metric, the threshold, and the constraint — before the experiment runs, not after.
-15. Diagnose the failure category (prompt / hallucination / model mismatch / orchestration) before choosing a fix — the fix for one does nothing for the others.
-16. Diagnose the bottleneck before changing the model — a latency or quality problem is not automatically a model-capability problem.
-17. Match the reliability control to the failure's scope: one bad call → retry; unavailable primary → fallback; sustained downstream failure → circuit breaker.
-18. The dangerous safety failure is silent — never assume Claude enforces a domain rule it was never given; trained behavior covers broad harm, not your deployment's specific policy.
-19. Deploy input screening, output screening, and tool-call authorization in series — a control at one point does nothing for the others.
-20. If a capability is unnecessary or high-stakes, restrict or remove it structurally — don't rely on monitoring to catch misuse of something that shouldn't exist.
-21. Route human review by stakes (confidence + reversibility + cost), not by volume — reviewing everything means reviewing nothing.
-22. Fairness is architectural, not a model attribute — instrument the entry points you control (corpus, framing, examples, routing).
-23. Every compliance obligation needs a control, a named owner, and a living evidence artifact — a design document is not proof a control is running.
-24. Finish the four-category discovery question set (must do / must not do / must cost / must prove) before proposing any architecture — a confident sketch ends the questions too early.
-25. Every trade-off presentation needs reversal cost named explicitly — "what does undoing this cost once we're built around it?" is the question most people skip and the one that changes the meeting.
+1. **Use the simplest pattern** — augmented call, then workflow, then agent — that predictability, error-cost, and observability requirements allow. Autonomy is earned by genuine unpredictability, not granted by default.
+2. **Reach for multi-agent only when work genuinely exceeds one context or independent units can run in parallel** — and always build a coverage check at synthesis before trusting the summary.
+3. **The governing decomposition question is "where do the model's actual properties argue for Claude over the system that already does this right?"** — not "where can Claude help?"
+4. **Use retrieval when selecting the right information is part of the problem**; use long context when the information itself comfortably fits and retrieval adds little value.
+5. If the answer changes based on "what's true right now" rather than "what does the reference material say," **it needs a tool call to the system of record, not a retrieval index.**
+6. **Fine-tuning is the last resort in a sequence** — prompt optimization, then tool use/retrieval, then a stronger pattern, then fine-tuning.
+7. **Reach for the lightest prompting technique that meets the requirement** — heavier techniques cost tokens and latency on every call, forever.
+8. **Static content before dynamic content, always** — that ordering is what makes prompt caching work at all.
+9. **Gate every model change with an eval before shipping** — a model swap looks like a config change but rewrites how the whole product behaves; treat it as a release.
+10. **If Claude confuses two tools, the fix is almost always clarifying or separating their responsibilities** — not adding more context or a stronger model.
+11. **Reduce capability bloat at the source** — expose fewer tools by default, discover/load specialized ones only when needed.
+12. **Prefer the simplest tool-connection mechanism that meets reuse requirements** — MCP earns its complexity only with genuine multi-client reuse.
+13. **Match the evaluation method to the behavior being measured** — code-based wherever the answer is unambiguous, judge-based where interpretation is required, human review as the calibration source.
+14. **A usable A/B hypothesis names the treatment, the metric, the threshold, and the constraint** — before the experiment runs, not after.
+15. **Diagnose the failure category (prompt / hallucination / model mismatch / orchestration) before choosing a fix** — the fix for one does nothing for the others.
+16. **Diagnose the bottleneck before changing the model** — a latency or quality problem is not automatically a model-capability problem.
+17. **Match the reliability control to the failure's scope:** one bad call → retry; unavailable primary → fallback; sustained downstream failure → circuit breaker.
+18. **The dangerous safety failure is silent** — never assume Claude enforces a domain rule it was never given; trained behavior covers broad harm, not your deployment's specific policy.
+19. **Deploy input screening, output screening, and tool-call authorization in series** — a control at one point does nothing for the others.
+20. **If a capability is unnecessary or high-stakes, restrict or remove it structurally** — don't rely on monitoring to catch misuse of something that shouldn't exist.
+21. **Route human review by stakes (confidence + reversibility + cost), not by volume** — reviewing everything means reviewing nothing.
+22. **Fairness is architectural, not a model attribute** — instrument the entry points you control (corpus, framing, examples, routing).
+23. **Every compliance obligation needs a control, a named owner, and a living evidence artifact** — a design document is not proof a control is running.
+24. **Finish the four-category discovery question set (must do / must not do / must cost / must prove) before proposing any architecture** — a confident sketch ends the questions too early.
+25. **Every trade-off presentation needs reversal cost named explicitly** — "what does undoing this cost once we're built around it?" is the question most people skip and the one that changes the meeting.
 
 ### Top CCAR-P Exam Traps
 
@@ -7454,7 +7456,8 @@ function renderFinalCheck() {
 function extractTop25Rules() {
   const m = REVISION_MD.match(/### Top 25 Architect Decision Rules\n\n([\s\S]*?)\n\n### Top CCAR-P Exam Traps/);
   if (!m) return [];
-  return m[1].split('\n').filter(l => /^\d+\./.test(l)).map(l => l.replace(/^\d+\.\s*/, ''));
+  return m[1].split('\n').filter(l => /^\d+\./.test(l))
+    .map(l => l.replace(/^\d+\.\s*/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
 }
 function extractTopTrapHeadlines() {
   const m = REVISION_MD.match(/### Top CCAR-P Exam Traps\n\n([\s\S]*?)\n\n---\n\n## 🗺️ Exam Signal Map/);
