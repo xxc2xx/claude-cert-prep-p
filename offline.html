@@ -1022,8 +1022,8 @@
     user-select: none;
   }
   .elim-btn:hover { border-color: var(--red); color: var(--red); }
-  .choice.eliminated { opacity: 0.38; }
-  .choice.eliminated span { text-decoration: line-through; color: var(--muted); }
+  .choice.eliminated { opacity: 0.45; }
+  .choice.eliminated span { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: var(--red); color: var(--muted); }
   .choice.eliminated .elim-btn { border-color: var(--red); color: var(--red); background: rgba(248,81,73,0.15); }
 
 
@@ -1154,6 +1154,7 @@
             <option value="due">Due for review</option>
             <option value="weak-patterns">Weakest 3 patterns (unseen L3/4)</option>
             <option value="blind-spot">Blind spots</option>
+            <option value="crossed-correct">Crossed out the correct answer</option>
             <option value="close-call">Close calls</option>
             <option value="last-mock-wrong">Last mock — wrong</option>
             <option value="last-mock-all">Last mock — all</option>
@@ -3413,6 +3414,7 @@ function getFiltered() {
       if (!lastMockQidSet || !lastMockQidSet.has(q.id)) return false;
     }
     if (status === 'due' && !isDueForReview(q)) return false;
+    if (status === 'crossed-correct' && !(p && p.crossedCorrect)) return false;
     if (status === 'weak-patterns') {
       if (!weakPatternSet.has(q.decisionPattern)) return false;
       if (q.level !== 3 && q.level !== 4) return false;
@@ -3441,6 +3443,8 @@ const MOCK_WEIGHTS_RANDOM = { D1:11, D2:8, D3:12, D4:10, D5:9, D6:9, D7:4 }; // 
 const MOCK_DURATION_MS = 120 * 60 * 1000;
 let mockState = { active: false, qids: [], startedAt: 0, progress: {}, flagged: new Set(), timerHandle: null, label: '' };
 let retrySession = { active: false, qids: new Set() };
+// Options crossed out with ✕, per question, until that question is submitted — survives re-renders.
+const eliminatedState = {};
 
 const UNSEEN_SIM_LABEL = 'Exam Sim (unseen)';
 const FINAL_SIM_LABEL = '🔒 Final Sim';
@@ -3919,6 +3923,7 @@ function renderQuestion(q, idx) {
       const answerSet = new Set(q.answerSet);
       return q.choices.map((c, i) => {
         let cls = 'choice';
+        if (!locked && eliminatedState[q.id]?.has(i)) cls += ' eliminated';
         let checked = false;
         if (showAnswerHighlight && chosenSet) {
           cls += ' locked';
@@ -3935,12 +3940,13 @@ function renderQuestion(q, idx) {
         return `<label class="${cls}">
           <input type="checkbox" name="${q.id}" value="${i}" ${locked ? 'disabled' : ''} ${checked ? 'checked' : ''} />
           <span>${c}</span>
-          ${!locked ? '<button type="button" class="elim-btn" data-action="elim" tabindex="-1">✕</button>' : ''}
+          ${!locked ? `<button type="button" class="elim-btn" data-action="elim" data-qid="${q.id}" data-idx="${i}" tabindex="-1" title="Cross out this option">✕</button>` : ''}
         </label>`;
       }).join('');
     } else {
       return q.choices.map((c, i) => {
         let cls = 'choice';
+        if (!locked && eliminatedState[q.id]?.has(i)) cls += ' eliminated';
         if (showAnswerHighlight) {
           cls += ' locked';
           if (i === q.answer) cls += ' correct';
@@ -3952,7 +3958,7 @@ function renderQuestion(q, idx) {
         return `<label class="${cls}">
           <input type="radio" name="${q.id}" value="${i}" ${locked ? 'disabled' : ''} ${p && p.chosen === i ? 'checked' : ''} />
           <span>${c}</span>
-          ${!locked ? '<button type="button" class="elim-btn" data-action="elim" tabindex="-1">✕</button>' : ''}
+          ${!locked ? `<button type="button" class="elim-btn" data-action="elim" data-qid="${q.id}" data-idx="${i}" tabindex="-1" title="Cross out this option">✕</button>` : ''}
         </label>`;
       }).join('');
     }
@@ -4069,6 +4075,19 @@ document.getElementById('quiz').addEventListener('click', (e) => {
   if (!btn) return;
   const action = btn.dataset.action;
   const qid = btn.dataset.qid;
+  if (action === 'elim') {
+    // Cross out (or restore) one option; any number can be crossed. preventDefault stops the
+    // click from also selecting the option, since the ✕ sits inside the option's <label>.
+    e.preventDefault();
+    e.stopPropagation();
+    const choice = btn.closest('.choice');
+    if (!choice || choice.classList.contains('locked')) return;
+    const idx = parseInt(btn.dataset.idx, 10);
+    const set = (eliminatedState[qid] = eliminatedState[qid] || new Set());
+    if (set.has(idx)) set.delete(idx); else set.add(idx);
+    choice.classList.toggle('eliminated', set.has(idx));
+    return;
+  }
   const q = QUESTIONS.find(x => x.id === qid);
   if (!q) return;
   const isMulti = q.qtype === 'multi';
@@ -4111,9 +4130,12 @@ document.getElementById('quiz').addEventListener('click', (e) => {
 
     recordAttempt(qid, correct, confidence);
 
+    const crossed = [...(eliminatedState[qid] || [])].sort((a, b) => a - b);
+    const correctIdx = isMulti ? q.answerSet : [q.answer];
+    delete eliminatedState[qid];
     const entry = isMatrix ? { chosenStatements, correct, confidence }
       : isMatching ? { chosenMap, correct, confidence }
-      : { chosen, chosenSet, correct, confidence };
+      : { chosen, chosenSet, correct, confidence, eliminated: crossed, crossedCorrect: crossed.some(i => correctIdx.includes(i)) };
 
     if (mockState.active) {
       mockState.progress[qid] = entry;
@@ -4185,11 +4207,6 @@ document.getElementById('quiz').addEventListener('click', (e) => {
         badge.remove();
       }
     }
-    return;
-  } else if (action === 'elim') {
-    e.preventDefault();
-    const choice = btn.closest('.choice');
-    if (choice && !choice.classList.contains('locked')) choice.classList.toggle('eliminated');
     return;
   }
 });
@@ -4612,6 +4629,29 @@ function renderProgress() {
       <td style="padding:4px 8px">${s.highConfErrors || '—'}</td>
     </tr>`;
   }).join('');
+  // Answering style — how you eliminate and how well your confidence predicts correctness.
+  const styleEntries = Object.values(progress);
+  const elimTracked = styleEntries.filter(p => Array.isArray(p.eliminated));
+  const withElim = elimTracked.filter(p => p.eliminated.length > 0);
+  const noElim = elimTracked.filter(p => p.eliminated.length === 0);
+  const accOf = list => list.length ? Math.round(100 * list.filter(p => p.correct).length / list.length) + '%' : '—';
+  const crossedCorrectN = elimTracked.filter(p => p.crossedCorrect).length;
+  const confRow = lvl => { const l = styleEntries.filter(p => p.confidence === lvl); return `${accOf(l)} <span style="color:var(--muted)">(n=${l.length})</span>`; };
+  const styleRow = (label, val, note) => `<div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)"><span>${label}${note ? `<div style="font-size:11px;color:var(--muted)">${note}</div>` : ''}</span><span style="text-align:right;white-space:nowrap">${val}</span></div>`;
+  const answeringStyleSection = `
+    <div class="progress-row">
+      <h3>Answering Style <span style="font-size:11px;color:var(--muted);font-weight:400">— elimination habits &amp; confidence calibration</span></h3>
+      ${elimTracked.length < 20
+        ? `<div style="font-size:13px;color:var(--muted);margin-bottom:8px">Elimination stats appear after 20 single/multi answers (${elimTracked.length} so far). Use ✕ to cross out options you've ruled out.</div>`
+        : styleRow('Eliminate before answering', `${Math.round(100 * withElim.length / elimTracked.length)}% of answers`, 'Crossing out at least one option first') +
+          styleRow('Accuracy when you eliminate', `${accOf(withElim)} <span style="color:var(--muted)">(n=${withElim.length})</span>`) +
+          styleRow('Accuracy when you don\'t', `${accOf(noElim)} <span style="color:var(--muted)">(n=${noElim.length})</span>`) +
+          styleRow('⚠️ Crossed out the correct answer', `<b style="color:${crossedCorrectN ? 'var(--red)' : 'inherit'}">${crossedCorrectN}</b> time${crossedCorrectN === 1 ? '' : 's'}`, 'Review them via Show → "Crossed out the correct answer" — a rule you used to eliminate is wrong')}
+      ${styleRow('Accuracy at ⭐⭐⭐ High confidence', confRow('high'), 'Should be clearly highest — if not, you are overconfident')}
+      ${styleRow('Accuracy at ⭐⭐ Med confidence', confRow('med'))}
+      ${styleRow('Accuracy at ⭐ Low confidence', confRow('low'), 'Low but correct = lucky or under-confident; these return in the review queue')}
+    </div>`;
+
   const decisionPatternSection = patRows.length ? `
   <div class="progress-row">
     <h3>Decision Pattern Coverage <span style="font-size:11px;color:var(--muted);font-weight:400">— more useful than raw question totals; weakest coverage/accuracy/high-confidence-mistake patterns surface first</span></h3>
@@ -4803,6 +4843,7 @@ function renderProgress() {
       ${domRows}
     </div>
     ${trapSection}
+    ${answeringStyleSection}
     ${decisionPatternSection}
     ${mockHistory.length ? `
     <div class="progress-row">
