@@ -1151,6 +1151,8 @@
             <option value="unanswered">Unanswered</option>
             <option value="wrong">Wrong answers</option>
             <option value="correct">Got correct</option>
+            <option value="due">Due for review</option>
+            <option value="weak-patterns">Weakest 3 patterns (unseen L3/4)</option>
             <option value="blind-spot">Blind spots</option>
             <option value="close-call">Close calls</option>
             <option value="last-mock-wrong">Last mock — wrong</option>
@@ -1170,7 +1172,8 @@
       <button class="mock-btn" id="mock-exam-e" title="Advanced Mock E — 59 hard questions, timed" style="background:#7c3aed;border-color:#7c3aed;color:#fff">▶ Adv E</button>
       <button class="mock-btn" id="mock-exam-f" title="Advanced Mock F — 61 hard questions, timed" style="background:#7c3aed;border-color:#7c3aed;color:#fff">▶ Adv F</button>
       <button class="mock-btn" id="mock-exam-g" title="Advanced Mock G — 48 hard questions, timed" style="background:#0f766e;border-color:#0f766e;color:#fff">▶ Adv G</button>
-      <button class="mock-btn" id="mock-exam-final" title="Final Sim — 63 locked questions, 120 min, no domain labels, realistic exam-difficulty mix" style="background:#b91c1c;border-color:#b91c1c;color:#fff">🔒 Final Sim</button>
+      <button class="mock-btn" id="mock-exam-unseen" title="Exam Sim (unseen) — fresh 63 questions you haven't attempted, exam domain weights, 120 min" style="background:#1d4ed8;border-color:#1d4ed8;color:#fff">🆕 Exam Sim (unseen)</button>
+      <button class="mock-btn" id="mock-exam-final" title="Final Sim — 63 locked questions, 120 min, no domain labels, realistic exam-difficulty mix. Best kept cold for 3 days before the exam." style="background:#b91c1c;border-color:#b91c1c;color:#fff">🔒 Final Sim</button>
       <button class="mock-btn" id="brutal-30" title="Brutal Mode — 30 Level 3/4 questions only, untimed, no explanations until submitted" style="background:#450a0a;border-color:#7f1d1d;color:#fff">⚔️ Brutal 30</button>
       <button class="mock-btn" id="brutal-63" title="Brutal Mode — 63 Level 3/4 questions only, untimed, no explanations until submitted" style="background:#450a0a;border-color:#7f1d1d;color:#fff">⚔️ Brutal 63</button>
         <button id="apply-filters" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--muted);font-family:inherit;cursor:pointer;">Apply</button>
@@ -3200,13 +3203,55 @@ function saveAttemptHistory() {
   try { __storage.setItem(ATTEMPT_HISTORY_KEY, JSON.stringify(attemptHistory)); } catch(e) {}
 }
 
-function recordAttempt(qid, correct) {
+// Spaced review (Leitner): a miss or a low-confidence hit goes to box 0 (due in 1 day); each
+// correct answer given once the item is actually due moves it up a box (3 → 7 → 14 days);
+// clearing the last box graduates it out of the queue. Answering early (e.g. an immediate
+// retry) never promotes — only a miss can change an item that isn't due yet.
+const REVIEW_INTERVALS_DAYS = [1, 3, 7, 14];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function recordAttempt(qid, correct, confidence) {
   const prev = attemptHistory[qid];
+  const now = Date.now();
+  let box = prev && typeof prev.box === 'number' ? prev.box : null;
+  let dueAt = prev ? prev.dueAt ?? null : null;
+  if (!correct || confidence === 'low') {
+    box = 0;
+    dueAt = now + REVIEW_INTERVALS_DAYS[0] * DAY_MS;
+  } else if (box !== null && dueAt !== null && now >= dueAt - DAY_MS / 2) {
+    box = box + 1 >= REVIEW_INTERVALS_DAYS.length ? null : box + 1;
+    dueAt = box === null ? null : now + REVIEW_INTERVALS_DAYS[box] * DAY_MS;
+  }
   attemptHistory[qid] = {
     attempts: (prev?.attempts || 0) + 1,
     firstCorrect: prev ? prev.firstCorrect : correct,
+    firstTs: prev ? (prev.firstTs ?? null) : now,
+    lastTs: now,
+    box,
+    dueAt,
   };
   saveAttemptHistory();
+}
+
+function isDueForReview(q) {
+  const a = attemptHistory[q.id];
+  if (a && 'box' in a) return a.box !== null && a.dueAt !== null && a.dueAt <= Date.now();
+  const p = progress[q.id]; // misses recorded before the review queue existed
+  return !!(p && !p.correct);
+}
+
+function dueForReviewCount() {
+  return QUESTIONS.filter(isDueForReview).length;
+}
+
+// Weakest decision patterns: lowest accuracy among patterns with ≥3 answers, topped up with
+// the least-practised patterns when too few qualify yet.
+function weakestDecisionPatterns(n) {
+  const stats = computeDecisionPatternStats();
+  const entries = Object.entries(stats).filter(([, s]) => s.total > 0);
+  const scored = entries.filter(([, s]) => s.ans >= 3).sort((a, b) => a[1].c / a[1].ans - b[1].c / b[1].ans);
+  const rest = entries.filter(([, s]) => s.ans < 3).sort((a, b) => a[1].ans - b[1].ans);
+  return [...scored, ...rest].slice(0, n).map(([p]) => p);
 }
 
 function shuffle(arr) {
@@ -3237,6 +3282,8 @@ function shuffle(arr) {
     console.warn('[QC] Correct option is ≥' + RATIO_THRESHOLD + '× mean distractor length in ' + violations.length + ' question(s):', violations.map(v => v.id + ' (' + v.ratio + 'x)').join(', '));
   }
 })();
+
+const ANSWER_REBALANCE_TS = Date.parse('2026-10-03T00:00:00');
 
 // ===== QC: correct-answer position balance =====
 // Choices were rebalanced on 2026-10-03 (correct answers had drifted to A/B in ~90% of most forms,
@@ -3321,6 +3368,7 @@ function getFiltered() {
 
   const lastMockQidSet = (status.startsWith('last-mock') && lastMock && lastMock.qids)
     ? new Set(lastMock.qids) : null;
+  const weakPatternSet = status === 'weak-patterns' ? new Set(weakestDecisionPatterns(3)) : null;
 
   let list = QUESTIONS.filter(q => {
     if (domain && q.domain !== domain) return false;
@@ -3346,6 +3394,12 @@ function getFiltered() {
     if (status === 'last-mock-all') {
       if (!lastMockQidSet || !lastMockQidSet.has(q.id)) return false;
     }
+    if (status === 'due' && !isDueForReview(q)) return false;
+    if (status === 'weak-patterns') {
+      if (!weakPatternSet.has(q.decisionPattern)) return false;
+      if (q.level !== 3 && q.level !== 4) return false;
+      if (attemptHistory[q.id]) return false;
+    }
     if (status === 'blind-spot') {
       if (!p || p.correct) return false;
       if (p.confidence !== 'high') return false;
@@ -3370,6 +3424,37 @@ const MOCK_DURATION_MS = 120 * 60 * 1000;
 let mockState = { active: false, qids: [], startedAt: 0, progress: {}, flagged: new Set(), timerHandle: null, label: '' };
 let retrySession = { active: false, qids: new Set() };
 
+const UNSEEN_SIM_LABEL = 'Exam Sim (unseen)';
+const FINAL_SIM_LABEL = '🔒 Final Sim';
+
+// A fresh 63-question sim for weeks 2-4, once the fixed Final Sim set would be memorized.
+// Same domain quotas and roughly the same qtype mix as Final Sim (~25 multi, up to 3
+// matrix/matching); never-attempted questions first, then least-recently-seen. Final Sim
+// and the Official samples are excluded so Final Sim stays cold for T-3.
+function drawUnseenExamSim() {
+  const isMM = q => q.qtype === 'matrix' || q.qtype === 'matching';
+  const rank = list => [
+    ...shuffle(list.filter(q => !attemptHistory[q.id])),
+    ...list.filter(q => attemptHistory[q.id]).sort((a, b) => (attemptHistory[a.id].lastTs || 0) - (attemptHistory[b.id].lastTs || 0)),
+  ];
+  const pool = QUESTIONS.filter(q => q.form !== 'Final Sim' && q.form !== 'Official');
+  const draw = [];
+  let mmLeft = 3;
+  for (const [dom, n] of Object.entries(MOCK_WEIGHTS_RANDOM)) {
+    const inDom = pool.filter(q => q.domain === dom);
+    const mm = rank(inDom.filter(isMM)).slice(0, Math.min(mmLeft, 1));
+    mmLeft -= mm.length;
+    const multi = rank(inDom.filter(q => q.qtype === 'multi')).slice(0, Math.round(n * 25 / 63));
+    const single = rank(inDom.filter(q => q.qtype !== 'multi' && !isMM(q))).slice(0, n - mm.length - multi.length);
+    draw.push(...mm, ...multi, ...single);
+  }
+  if (draw.length < 63) {
+    const drawn = new Set(draw.map(q => q.id));
+    draw.push(...rank(pool.filter(q => !drawn.has(q.id))).slice(0, 63 - draw.length));
+  }
+  return shuffle(draw.slice(0, 63));
+}
+
 function startMockExam(mode) {
   // mode: 'random' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'final'
   if (mockState.active) return;
@@ -3378,6 +3463,8 @@ function startMockExam(mode) {
   let draw;
   if (mode === 'final') {
     draw = QUESTIONS.filter(q => q.form === 'Final Sim');
+  } else if (mode === 'unseen') {
+    draw = drawUnseenExamSim();
   } else if (mode === 'D' || mode === 'E' || mode === 'F' || mode === 'G') {
     const formName = 'Advanced Mock ' + mode;
     draw = shuffle(QUESTIONS.filter(q => q.form === formName));
@@ -3402,7 +3489,7 @@ function startMockExam(mode) {
     draw = shuffle(draw).slice(0, 63);
   }
 
-  const label = mode === 'random' ? 'Random 63' : mode === 'final' ? '🔒 Final Sim' : 'Mock ' + mode;
+  const label = mode === 'random' ? 'Random 63' : mode === 'final' ? FINAL_SIM_LABEL : mode === 'unseen' ? UNSEEN_SIM_LABEL : 'Mock ' + mode;
   mockState = {
     active: true,
     qids: draw.map(q => q.id),
@@ -3577,6 +3664,53 @@ function renderStats() {
 }
 
 // ===== Daily Plan =====
+// Exam-date-driven 30-day plan. Phases (days to exam): 22+ diagnose & learn · 11-21 drill weak
+// patterns · 4-10 exam conditions · 3 Final Sim (cold) · 1-2 taper · 0 exam day.
+// Due-for-review items are always served first.
+const EXAM_DATE_KEY = 'claude-cert-p-examdate';
+
+function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
+
+function getExamDate() {
+  let v = null;
+  try { v = __storage.getItem(EXAM_DATE_KEY); } catch(e) {}
+  if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const d = new Date(startOfToday() + 30 * DAY_MS);
+    v = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    try { __storage.setItem(EXAM_DATE_KEY, v); } catch(e) {}
+  }
+  return v;
+}
+
+function daysToExam() {
+  const [y, m, d] = getExamDate().split('-').map(Number);
+  return Math.round((new Date(y, m - 1, d).getTime() - startOfToday()) / DAY_MS);
+}
+
+function setPracticeFilters(domain, status) {
+  document.getElementById('filter-domain').value = domain;
+  document.getElementById('filter-block').value = '';
+  document.getElementById('filter-status').value = status;
+  render();
+}
+
+function openStudySub(sub) {
+  document.querySelector('#main-tabs .tab-btn[data-tab="study"]')?.click();
+  document.querySelector('#study-subtabs .tab-btn[data-sub="' + sub + '"]')?.click();
+}
+
+function runPlanAction(action, weakest) {
+  if (action === 'due') setPracticeFilters('', 'due');
+  else if (action === 'sim-unseen') startMockExam('unseen');
+  else if (action === 'final') startMockExam('final');
+  else if (action === 'weak-domain') setPracticeFilters(weakest || '', 'unanswered');
+  else if (action === 'weak-patterns') setPracticeFilters('', 'weak-patterns');
+  else if (action === 'brutal') startBrutalMode(30);
+  else if (action === 'last-mock-wrong') setPracticeFilters('', 'last-mock-wrong');
+  else if (action === 'revision') openStudySub('revision');
+  else if (action === 'last48') openStudySub('last48');
+}
+
 function renderDailyPlan() {
   const panel = document.getElementById('daily-plan');
   if (!panel) return;
@@ -3586,85 +3720,100 @@ function renderDailyPlan() {
   })();
   if (dismissed) { panel.style.display = 'none'; return; }
 
-  const DOMAINS = ['D1','D2','D3','D4','D5','D6','D7'];
   const domNames = { D1:'Solution Design', D2:'Models/Prompting', D3:'Integration', D4:'Evaluation', D5:'Governance', D6:'Stakeholder', D7:'Dev Productivity' };
-  const domStats = {};
-  DOMAINS.forEach(d => { domStats[d] = { t:0, c:0, ans:0 }; });
-  QUESTIONS.forEach(q => {
-    if (!domStats[q.domain]) return;
-    domStats[q.domain].t++;
-    const p = progress[q.id];
-    if (p) { domStats[q.domain].ans++; if (p.correct) domStats[q.domain].c++; }
-  });
+  const domStats = computeDomainStats();
+  const scoredDoms = DOMAINS.filter(d => domStats[d].ans >= 3).map(d => ({ d, pct: Math.round(100 * domStats[d].c / domStats[d].ans) }));
+  const weakest = scoredDoms.length
+    ? scoredDoms.sort((a, b) => a.pct - b.pct)[0]
+    : { d: DOMAINS.slice().sort((a, b) => domStats[a].ans / domStats[a].t - domStats[b].ans / domStats[b].t)[0], pct: null };
 
-  const answered = QUESTIONS.filter(q => progress[q.id]).length;
-  const wrongCount = QUESTIONS.filter(q => progress[q.id] && !progress[q.id].correct).length;
-  const weakest = Object.entries(domStats)
-    .filter(([,s]) => s.ans >= 3)
-    .map(([d,s]) => ({ d, pct: Math.round(100*s.c/s.ans) }))
-    .sort((a,b) => a.pct - b.pct)[0];
+  const days = daysToExam();
+  const today = startOfToday();
+  const answeredToday = Object.values(progress).filter(p => (p.ts || 0) >= today).length;
+  const due = dueForReviewCount();
+  const tookUnseenSim = mockHistory.some(m => m.label === UNSEEN_SIM_LABEL);
+  const simToday = mockHistory.some(m => (m.label === UNSEEN_SIM_LABEL || m.label === FINAL_SIM_LABEL) && m.ts >= today);
+  const tookFinalSim = mockHistory.some(m => m.label === FINAL_SIM_LABEL);
+  const weakPatterns = weakestDecisionPatterns(3);
 
-  let label, msg, sub, actions;
-  if (answered === 0) {
-    label = 'Start here';
-    msg = 'Run Mock A to baseline yourself';
-    sub = '63 Qs across all 7 CCAR-P domains. 120 minutes — simulates the real exam format.';
-    actions = `<button id="plan-btn-mock" style="background:var(--accent);color:#0e1116;border:none;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">▶ Start Mock A</button>
-               <button id="plan-btn-browse" style="background:none;border:1px solid var(--border);border-radius:6px;padding:7px 14px;font-size:13px;color:var(--muted);font-family:inherit;cursor:pointer;">Browse all questions</button>`;
-  } else if (wrongCount > 0 && weakest && weakest.pct < 65) {
-    label = "Today's focus";
-    msg = `${weakest.d} (${domNames[weakest.d]}) — ${weakest.pct}% accuracy`;
-    sub = `Showing wrong answers in ${weakest.d} to review and retry.`;
-    actions = `<button id="plan-btn-weak" style="background:var(--accent);color:#0e1116;border:none;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">Wrong in ${weakest.d}</button>
-               <button id="plan-btn-retry" style="background:none;border:1px solid var(--border);border-radius:6px;padding:7px 14px;font-size:13px;color:var(--muted);font-family:inherit;cursor:pointer;">All wrong</button>`;
-  } else if (weakest && weakest.pct < 75) {
-    label = "Today's focus";
-    msg = `Strengthen ${weakest.d} — ${weakest.pct}% so far`;
-    sub = `Practice unanswered questions in ${domNames[weakest.d]}.`;
-    actions = `<button id="plan-btn-domain" style="background:var(--accent);color:#0e1116;border:none;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">Study ${weakest.d}</button>`;
+  const btn = (action, text, primary) => `<button data-plan="${action}" style="${primary
+    ? 'background:var(--accent);color:#0e1116;border:none;font-weight:700;padding:7px 16px;'
+    : 'background:none;border:1px solid var(--border);color:var(--muted);padding:7px 14px;'}border-radius:6px;font-size:13px;font-family:inherit;cursor:pointer;">${text}</button>`;
+  const dueBtn = due ? btn('due', `🔁 Review ${due} due`, true) : '';
+  const dueBtnSecondary = due ? btn('due', `🔁 Review ${due} due`, false) : '';
+
+  let label, msg, target = 0, actions = [];
+  if (days < 0) {
+    label = 'Exam date passed';
+    msg = 'Set your next exam date below to restart the plan.';
+  } else if (days === 0) {
+    label = 'Exam day';
+    msg = 'Light touch only: skim the Last 48 Hours page, then rest. No new questions.';
+    actions = [btn('last48', '⏱️ Last 48 Hours', true)];
+  } else if (days <= 2) {
+    label = `Taper · T-${days}`;
+    msg = 'No new full sims. Re-read Last 48 Hours and clear your due reviews.';
+    actions = [btn('last48', '⏱️ Last 48 Hours', true), dueBtnSecondary];
+  } else if (days === 3) {
+    label = 'Final Sim day · T-3';
+    if (tookFinalSim) {
+      msg = 'Final Sim done — review every miss and the reasoning behind it.';
+      actions = [btn('last-mock-wrong', 'Review last sim misses', true), dueBtnSecondary];
+    } else {
+      msg = 'Sit the Final Sim cold: 63 Qs, 120 min, no breaks, no notes.';
+      target = 63;
+      actions = [btn('final', '🔒 Start Final Sim', true)];
+    }
+  } else if (days <= 10) {
+    label = `Exam conditions · T-${days}`;
+    if (days % 2 === 0 && !simToday) {
+      msg = 'Sim day: a fresh 63-question exam under real timing.';
+      target = 63;
+      actions = [btn('sim-unseen', '🆕 Start Exam Sim (unseen)', true), dueBtnSecondary];
+    } else {
+      msg = simToday ? 'Sim done — now review every miss from it.' : 'Review day: misses from your last sim, then due reviews.';
+      target = 30;
+      actions = [btn('last-mock-wrong', 'Last sim misses', !due), dueBtn];
+    }
+  } else if (days <= 21) {
+    label = `Drill weak patterns · T-${days}`;
+    target = 30;
+    if (days % 3 === 0) {
+      msg = 'Brutal day: 30 Level 3/4 questions, explanations only at the end.';
+      actions = [dueBtn, btn('brutal', '⚔️ Brutal 30', !due)];
+    } else {
+      msg = `Unseen hard questions in your weakest patterns: ${weakPatterns.join(' · ')}.`;
+      actions = [dueBtn, btn('weak-patterns', 'Drill weakest 3 patterns', !due)];
+    }
+  } else if (!tookUnseenSim) {
+    label = `Diagnose · T-${days}`;
+    msg = 'Start with a baseline: one fresh 63-question Exam Sim under real timing.';
+    target = 63;
+    actions = [btn('sim-unseen', '🆕 Start baseline Exam Sim', true), dueBtnSecondary];
   } else {
-    label = 'Looking good';
-    msg = `${answered}/${QUESTIONS.length} answered — keep going`;
-    sub = `Run Mock B or C to simulate the full exam under timed conditions.`;
-    actions = `<button id="plan-btn-mockb" style="background:var(--accent);color:#0e1116;border:none;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">▶ Mock B</button>
-               <button id="plan-btn-mockc" style="background:none;border:1px solid var(--border);border-radius:6px;padding:7px 14px;font-size:13px;color:var(--muted);font-family:inherit;cursor:pointer;">▶ Mock C</button>`;
+    label = `Diagnose & learn · T-${days}`;
+    target = 40;
+    msg = `Unseen questions in ${weakest.d} (${domNames[weakest.d]})${weakest.pct !== null ? ` — ${weakest.pct}% so far` : ''}, then read its Revision pillar.`;
+    actions = [dueBtn, btn('weak-domain', `Practice ${weakest.d}`, !due), btn('revision', '🔄 Revision', false)];
   }
+
+  const examDate = getExamDate();
+  const sub = `${target ? `Today: <b>${answeredToday}</b> / ${target} answered · ` : ''}${due} due for review ·
+    <label style="white-space:nowrap">Exam <input type="date" id="plan-exam-date" value="${examDate}" style="font:inherit;font-size:12px;background:none;color:inherit;border:1px solid var(--border);border-radius:4px;padding:1px 4px"></label>`;
 
   document.getElementById('plan-label').textContent = label;
   document.getElementById('plan-msg').textContent = msg;
-  document.getElementById('plan-sub').textContent = sub;
-  document.getElementById('plan-actions').innerHTML = actions;
+  document.getElementById('plan-sub').innerHTML = sub;
+  document.getElementById('plan-actions').innerHTML = actions.filter(Boolean).join(' ');
   panel.style.display = 'flex';
 
-  const planMock = document.getElementById('plan-btn-mock');
-  if (planMock) planMock.addEventListener('click', () => startMockExam('A'));
-  const planBrowse = document.getElementById('plan-btn-browse');
-  if (planBrowse) planBrowse.addEventListener('click', () => {
-    try { sessionStorage.setItem('ccar-p-plan-dismissed','1'); } catch(e) {}
-    panel.style.display = 'none';
-    render();
+  panel.querySelectorAll('[data-plan]').forEach(b => b.addEventListener('click', () => runPlanAction(b.dataset.plan, weakest.d)));
+  document.getElementById('plan-exam-date').addEventListener('change', e => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) {
+      try { __storage.setItem(EXAM_DATE_KEY, e.target.value); } catch(err) {}
+      renderDailyPlan();
+    }
   });
-  const planWeak = document.getElementById('plan-btn-weak');
-  if (planWeak) planWeak.addEventListener('click', () => {
-    document.getElementById('filter-domain').value = weakest.d;
-    document.getElementById('filter-status').value = 'wrong';
-    render();
-  });
-  const planRetry = document.getElementById('plan-btn-retry');
-  if (planRetry) planRetry.addEventListener('click', () => {
-    document.getElementById('filter-status').value = 'wrong';
-    render();
-  });
-  const planDomain = document.getElementById('plan-btn-domain');
-  if (planDomain) planDomain.addEventListener('click', () => {
-    document.getElementById('filter-domain').value = weakest?.d || '';
-    document.getElementById('filter-status').value = 'unanswered';
-    render();
-  });
-  const planMockB = document.getElementById('plan-btn-mockb');
-  if (planMockB) planMockB.addEventListener('click', () => startMockExam('B'));
-  const planMockC = document.getElementById('plan-btn-mockc');
-  if (planMockC) planMockC.addEventListener('click', () => startMockExam('C'));
 }
 
 // ===== renderQuestion =====
@@ -3942,7 +4091,7 @@ document.getElementById('quiz').addEventListener('click', (e) => {
       correct = chosen === q.answer;
     }
 
-    recordAttempt(qid, correct);
+    recordAttempt(qid, correct, confidence);
 
     const entry = isMatrix ? { chosenStatements, correct, confidence }
       : isMatching ? { chosenMap, correct, confidence }
@@ -4107,6 +4256,7 @@ document.getElementById('mock-exam-e').addEventListener('click', () => startMock
 document.getElementById('mock-exam-f').addEventListener('click', () => startMockExam('F'));
 document.getElementById('mock-exam-g').addEventListener('click', () => startMockExam('G'));
 document.getElementById('mock-exam-final').addEventListener('click', () => startMockExam('final'));
+document.getElementById('mock-exam-unseen').addEventListener('click', () => startMockExam('unseen'));
 document.getElementById('brutal-30').addEventListener('click', () => startBrutalMode(30));
 document.getElementById('brutal-63').addEventListener('click', () => startBrutalMode(63));
 document.getElementById('mock-submit').addEventListener('click', () => endMockExam(false));
@@ -4514,8 +4664,7 @@ function renderProgress() {
     </div>
   </div>` : '';
 
-  const REBALANCE_TS = Date.parse('2026-10-03T00:00:00');
-  const preRebalance = QUESTIONS.filter(q => progress[q.id] && (progress[q.id].ts || 0) < REBALANCE_TS).length;
+  const preRebalance = QUESTIONS.filter(q => progress[q.id] && (progress[q.id].ts || 0) < ANSWER_REBALANCE_TS).length;
   const rebalanceNoteDismissed = (() => { try { return !!__storage.getItem('claude-cert-p-rebalance-note'); } catch(e) { return false; } })();
   const rebalanceNote = (preRebalance && !rebalanceNoteDismissed) ? `
   <div class="progress-row" style="border-left:3px solid var(--warn, #e0a030);padding-left:12px;margin-bottom:12px">
@@ -4524,8 +4673,35 @@ function renderProgress() {
     <button class="secondary" id="dismiss-rebalance-note" style="margin-top:8px">Got it</button>
   </div>` : '';
 
+  // Go / No-Go: every line must pass. Sim bar is 750 scaled (~72% raw), a margin above the
+  // 720 pass line because the linear approximation here is not the real IRT scaling.
+  const goSims = mockHistory.filter(m => m.label === UNSEEN_SIM_LABEL || m.label === FINAL_SIM_LABEL).slice(-2);
+  const coldPost = Object.values(attemptHistory).filter(a => a.firstTs && a.firstTs >= ANSWER_REBALANCE_TS);
+  const coldPct = coldPost.length ? Math.round(100 * coldPost.filter(a => a.firstCorrect).length / coldPost.length) : null;
+  const goDom = computeDomainStats();
+  const domLow = DOMAINS.filter(d => goDom[d].ans < 5 || goDom[d].c / goDom[d].ans < 0.7);
+  const goDue = dueForReviewCount();
+  const patLow = Object.entries(computeDecisionPatternStats()).filter(([, s]) => s.ans >= 5 && s.c / s.ans < 0.6).map(([p]) => p);
+  const goChecks = [
+    [goSims.length === 2 && goSims.every(m => m.scaled >= 750), 'Last 2 Exam/Final Sims each ≥ 750',
+      goSims.length ? goSims.map(m => m.scaled).join(', ') : 'none taken yet'],
+    [coldPct !== null && coldPost.length >= 30 && coldPct >= 78, 'First-attempt accuracy ≥ 78% (since 3 Oct, n ≥ 30)',
+      coldPct === null ? 'no data yet' : `${coldPct}% (n=${coldPost.length})`],
+    [domLow.length === 0, 'Every domain ≥ 70% (n ≥ 5 each)', domLow.length ? 'below: ' + domLow.join(', ') : 'all clear'],
+    [goDue < 15, 'Fewer than 15 reviews due', `${goDue} due`],
+    [patLow.length === 0, 'No decision pattern below 60% (n ≥ 5)', patLow.length ? patLow.slice(0, 3).join(', ') + (patLow.length > 3 ? ` +${patLow.length - 3}` : '') : 'all clear'],
+  ];
+  const go = goChecks.every(c => c[0]);
+  const goCard = `
+  <div class="progress-row" style="border-left:3px solid ${go ? 'var(--ok, #22c55e)' : 'var(--bad, #ef4444)'};padding-left:12px;margin-bottom:12px">
+    <h3>Exam Go / No-Go <span style="font-size:11px;color:var(--muted);font-weight:400">— ${daysToExam() < 0 ? 'exam date passed' : 'T-' + daysToExam()} · all five must pass</span></h3>
+    <div style="font-size:22px;font-weight:700;margin:4px 0 8px;color:${go ? 'var(--ok, #22c55e)' : 'var(--bad, #ef4444)'}">${go ? 'GO' : 'NOT YET'}</div>
+    ${goChecks.map(([ok, name, val]) => `<div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:3px 0"><span>${ok ? '✅' : '❌'} ${name}</span><span style="color:var(--muted);text-align:right">${val}</span></div>`).join('')}
+  </div>`;
+
   el.innerHTML = `
   ${rebalanceNote}
+  ${goCard}
   <div class="progress-summary">
     <div class="progress-row overall">
       <h3>Overall Progress</h3>
