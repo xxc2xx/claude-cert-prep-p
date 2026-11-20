@@ -5468,19 +5468,87 @@ Data residency, auditability, GDPR/HIPAA requirements — architect them in befo
 `;
 
 const CHEATSHEET_MD = `# CCAR-P — Official Study Guide
-*Based on the official Anthropic Exam Guide v1.0 · Effective July 2026*
+*Based on the official Anthropic Exam Guide v1.1 · Effective 7 December 2026 (applies to exams taken on or after that date)*
 
 ## Exam Facts (Official)
 | Field | Detail |
 |-------|--------|
-| Items | **63 questions** |
-| Time | **120 minutes** |
+| Items | **70 items — 60 scored + 10 unscored** (unscored items are not identified; treat every item as scored) |
+| Time | **120 minutes** (~1.7 min per item) |
 | Passing | **Scaled 720 / 1,000** (no published raw-score conversion) |
 | Fee | **$175 USD** |
-| Format | Multiple-choice + Multiple-response (each item states how many to select) |
-| Scoring | Criterion-referenced — fixed standard, not curved |
+| Format | Scenario-based multiple-choice; each item states how many responses to select |
+| Scoring | Criterion-referenced — fixed standard, not curved. Score report shows % correct per domain (not used for pass/fail) |
 | Retakes | 14 days after 1st fail · 30 days after 2nd · 90 days after 3rd · max 4/year |
 | Validity | 12 months — renew via free non-proctored assessment |
+| Before 7 Dec | Guide v1.0 applied: 63 items, weights 17/13/19/16/14/14/7 |
+
+## v1.1 Blueprint & Skills Map
+| Domain | Weight | ~Scored Qs (of 60) |
+|---|---|---|
+| D1 Solution Design & Architecture | **18%** | ~11 |
+| D2 Claude Models, Prompting & Context Engineering | **13%** | ~8 |
+| D3 Integration | **21%** | ~13 |
+| D4 Evaluation, Testing & Optimization | **17%** | ~10 |
+| D5 Governance, Safety & Risk Management | **16%** | ~10 |
+| D6 Stakeholder Communication & Lifecycle Management | **7%** (was 14%) | ~4 |
+| D7 Developer Productivity & Operational Enablement | **8%** | ~5 |
+
+> Items present artifacts — architecture diagrams, config files, logs and traces, eval results, code — and expect you to reason from them. Every skill below is phrased as "select / diagnose / evaluate X against stated constraints".
+
+{{collapse: D1 — Solution Design & Architecture (18%) · 6 skills}}
+- **Task delegation** — split a business process into Claude / human / shared, justified by reversibility, stakes and accountability.
+- **End-to-end architecture evaluation** — check input → processing → output → feedback against scale, maintainability and access-control needs; name the component that fails first under the stated load or trust condition.
+- **Pattern selection** — workflow vs agentic vs augmented LLM vs Skills-based, given reuse, governance and risk profile; justify the delegation boundary it creates.
+- **Orchestrator/subagent decomposition** — judge against observability and error-recovery needs; find where task boundaries, control flow or result synthesis break.
+- **Value-based decisions** — pick the option that maximises measurable outcome under a cost or SLA ceiling (efficiency, transformation, productivity, cost, SLA).
+- **Deployment surface + agent runtime** — Anthropic API / Bedrock / Vertex AI / Foundry × Messages API loop / self-hosted Agent SDK or headless Claude Code / Managed Agents, under residency, compliance, model availability and ownership; know the trade-offs in latency, features, hosting, session state, sandboxing and data custody.
+{{endcollapse}}
+{{collapse: D2 — Models, Prompting & Context Engineering (13%) · 6 skills}}
+- **Model tier selection** — the tier that meets every binding latency, cost and quality constraint; say why each alternative fails.
+- **System prompt diagnosis** — find the underspecification behind degraded output; revise scope, format and behaviour without over-constraining.
+- **Prompting technique** — zero-shot, few-shot, prompted reasoning vs native thinking, structured output: fix the observed failure without wasted tokens.
+- **Context composition & token economics** — against a token budget and call volume, find where tokens can go without losing task-relevant information.
+- **Cache breakpoints & reusable packaging** — stable content before dynamic content; modular or Skill-based packaging to maximise reuse.
+- **Reasoning effort & context lifecycle** — set reasoning effort; choose context editing, memory tool or compaction for long-running agents.
+{{endcollapse}}
+{{collapse: D3 — Integration (21%) · 8 skills}}
+- **Least-privilege tools** — remove, scope down, or replace tool connections with a context-efficient access pattern.
+- **AuthN/AuthZ posture** — find credential exposure and privilege-escalation risks; give a mitigation for each.
+- **Relieve the binding constraint** — retrieval depth, model tier, caching, call pattern: fix accuracy or latency at least cost to the other.
+- **Instrumentation gaps** — why a failure went undetected at scale, and the monitoring that would have surfaced it.
+- **Retrieval architecture** — pre-built RAG vs agentic search with tools vs full-corpus context; if indexing, the contextual-retrieval and fallback setup.
+- **Connection mechanism** — MCP vs direct API/CLI vs agent-to-agent handoff, by latency, security and statefulness.
+- **Progressive discovery vs monolithic loading** — choose by context demand and latency tolerance.
+- **Production reliability** — rate-limit handling, retry and backoff, idempotency for side-effecting tools, fallback routing — without duplicate effects.
+{{endcollapse}}
+{{collapse: D4 — Evaluation, Testing & Optimization (17%) · 7 skills}}
+- **Eval coverage gaps** — after a production failure, the missing dimension (accuracy, groundedness, latency, cost, safety, security) or grading target.
+- **Evals from business processes** — the slice that validly supports a model change, prompt change or release gate; success criterion from the business outcome; method mix covering the deployed distribution.
+- **LLM-as-judge bias** — position, verbosity, self-preference, judge drift → the matching correction.
+- **Experimental design** — an interpretable A/B within budget, with enough trials per case to separate the effect from run-to-run variance.
+- **Root cause from logs/traces** — prompt failure vs retrieval failure vs hallucination vs tool/subagent error vs model mismatch.
+- **Cost & latency optimisation** — read telemetry incl. cache hit rates; cut spend or latency without breaching the quality floor.
+- **Model version migration** — deprecation timeline + regression results → pin, re-tune prompts, re-baseline evals, or defer.
+{{endcollapse}}
+{{collapse: D5 — Governance, Safety & Risk Management (16%) · 6 skills}}
+- **Guardrail placement** — close the misuse path without degrading the legitimate use case.
+- **Prompt-injection surface** — retrieved docs, tool results, MCP responses, third-party Skills: stop untrusted content being treated as instruction.
+- **Risk ranking** — attack surface, failure modes, token/quota exhaustion, dependency and supply-chain risk, ranked by exposure.
+- **HITL checkpoints** — gate irreversible or high-stakes steps without stalling acceptable-risk paths.
+- **Compliance controls** — residency and surface, retention/ZDR, PII redaction, audit logging, tenant isolation → the set that evidences the obligation.
+- **Bias source** — data bias vs prompt-framing bias vs evaluation-design bias; mitigate at the source.
+{{endcollapse}}
+{{collapse: D6 — Stakeholder Communication & Lifecycle (7%) · 3 skills}}
+- **Unsupportable commitments** — the SLA or requirement the architecture can't meet; clarify it or change the design.
+- **Architecture decision records** — make the trade-off and residual risk explicit; never overstate certainty about model behaviour.
+- **Operational handoff** — the missing assumption, dependency or runbook item that would block the receiving team.
+{{endcollapse}}
+{{collapse: D7 — Developer Productivity & Operational Enablement (8%) · 3 skills}}
+- **Packaging & distribution** — plugin contents (skills, hooks, subagents, commands, MCP config), marketplace, managed settings; what is enforced centrally vs left to teams so unattended runs stay safe.
+- **Agent SDK / Claude Code configuration** — permission modes (default, acceptEdits, plan, auto, dontAsk, bypassPermissions), hooks, subagent definitions, headless/CI.
+- **Accountability for AI-generated code** — the review control that keeps a human owner.
+{{endcollapse}}
 
 ## When to Trigger — Practical Decision Points
 
@@ -7694,33 +7762,35 @@ function renderFinalCheck() {
   <h3>Exam Logistics (Official)</h3>
   <table class="fc-table">
     <tr><th>Field</th><th>Detail</th></tr>
-    <tr><td>Items</td><td><b>63 questions</b></td></tr>
-    <tr><td>Time</td><td><b>120 minutes</b></td></tr>
+    <tr><td>Items</td><td><b>70 items</b> — 60 scored + 10 unscored (not identified)</td></tr>
+    <tr><td>Time</td><td><b>120 minutes</b> (~1.7 min per item)</td></tr>
     <tr><td>Passing</td><td><b>720 / 1,000 scaled</b> — no published raw-score conversion</td></tr>
     <tr><td>Fee</td><td>$175 USD</td></tr>
     <tr><td>Retakes</td><td>14 days (1st fail) · 30 days (2nd) · 90 days (3rd) · max 4/year</td></tr>
     <tr><td>Validity</td><td>12 months — renew via free non-proctored assessment</td></tr>
-    <tr><td>Format</td><td>Multiple-choice + Multiple-response (item states count to select)</td></tr>
+    <tr><td>Format</td><td>Scenario-based multiple-choice (item states how many to select)</td></tr>
+    <tr><td>Version</td><td>Exam Guide v1.1, effective 7 Dec 2026 (v1.0 before that: 63 items)</td></tr>
     <tr><td>Scoring</td><td>Criterion-referenced, fixed standard — not curved</td></tr>
   </table>
 </div>
 
 <div class="fc-section">
-  <h3>Official Blueprint (Domain Weights)</h3>
+  <h3>Official Blueprint (Domain Weights · Guide v1.1, from 7 Dec 2026)</h3>
   <table class="fc-table">
-    <tr><th>Domain</th><th>Official Name</th><th>Weight</th><th>~Q</th></tr>
-    <tr><td>D1</td><td>Solution Design &amp; Architecture</td><td>17%</td><td>~11</td></tr>
+    <tr><th>Domain</th><th>Official Name</th><th>Weight</th><th>~Q of 60 scored</th></tr>
+    <tr><td>D1</td><td>Solution Design &amp; Architecture</td><td>18%</td><td>~11</td></tr>
     <tr><td>D2</td><td>Claude Models, Prompting &amp; Context Engineering</td><td>13%</td><td>~8</td></tr>
-    <tr><td>D3</td><td>Integration</td><td>19%</td><td>~12</td></tr>
-    <tr><td>D4</td><td>Evaluation, Testing &amp; Optimization</td><td>16%</td><td>~10</td></tr>
-    <tr><td>D5</td><td>Governance, Safety &amp; Risk Management</td><td>14%</td><td>~9</td></tr>
-    <tr><td>D6</td><td>Stakeholder Communication &amp; Lifecycle Management</td><td>14%</td><td>~9</td></tr>
-    <tr><td>D7</td><td>Developer Productivity &amp; Operational Enablement</td><td>7%</td><td>~4</td></tr>
+    <tr><td>D3</td><td>Integration</td><td>21%</td><td>~13</td></tr>
+    <tr><td>D4</td><td>Evaluation, Testing &amp; Optimization</td><td>17%</td><td>~10</td></tr>
+    <tr><td>D5</td><td>Governance, Safety &amp; Risk Management</td><td>16%</td><td>~10</td></tr>
+    <tr><td>D6</td><td>Stakeholder Communication &amp; Lifecycle Management</td><td>7% <span style="color:var(--muted)">(was 14%)</span></td><td>~4</td></tr>
+    <tr><td>D7</td><td>Developer Productivity &amp; Operational Enablement</td><td>8%</td><td>~5</td></tr>
   </table>
 </div>
 
 <div class="fc-section">
   <h3>Official Sample Questions — Know These Cold</h3>
+  <p style="color:var(--muted);font-size:12px;margin:0 0 10px">S1–S3 from Exam Guide v1.0 · S4–S6 from Exam Guide v1.1 (effective 7 Dec 2026)</p>
   <div style="border-left:4px solid #d97706;padding:14px 16px;margin-bottom:16px;background:#1e1a0e;color:#e8e0c8;border-radius:6px">
     <b>S1 · D3 Integration — Least Privilege</b><br>
     A team exposes a customer-support agent that can read tickets, draft replies, issue refunds, and delete user accounts.
@@ -7741,6 +7811,24 @@ function renderFinalCheck() {
     What is the most likely first place to investigate?<br><br>
     <span style="color:#16a34a"><b>✓ Answer B:</b> The retrieval/indexing step is returning irrelevant or stale chunks.</span><br>
     <i>Rationale: Confident-but-wrong after document refresh + unchanged model/latency = broken re-index or mismatched embeddings. Model weights (A), temperature (C), context window shrinkage (D) all ruled out by unchanged latency and model version.</i>
+  </div>
+  <div style="border-left:4px solid #d97706;padding:14px 16px;margin-bottom:16px;background:#1e1a0e;color:#e8e0c8;border-radius:6px">
+    <b>S4 · D1 Design — Deployment Surface &amp; Runtime (v1.1)</b><br>
+    A financial services firm must keep customer documents and all model inputs inside its existing cloud provider boundary (where its residency attestations live). Product wants new Claude features as soon as they ship; platform would prefer Anthropic host the agent loop and session state. Which constraint decides the architecture, and what trade-off is accepted?<br><br>
+    <span style="color:#16a34a"><b>✓ Answer A:</b> Deploy through the firm's cloud marketplace surface; residency is binding, and the firm accepts feature lag and ownership of the agent runtime and its session state.</span><br>
+    <i>Rationale: Residency is a hard constraint. ZDR governs how long data is held, not where it is processed. Mirroring documents still sends inputs out. "All three satisfied, no trade-off" is wrong — surface choice constrains runtime options and feature availability.</i>
+  </div>
+  <div style="border-left:4px solid #d97706;padding:14px 16px;margin-bottom:16px;background:#1e1a0e;color:#e8e0c8;border-radius:6px">
+    <b>S5 · D3 Integration — Idempotency on Retries (v1.1)</b><br>
+    An agent files expense reimbursements via a payments tool. During a surge the client wrapper retries rate-limited requests with exponential backoff; some employees are paid twice. Each duplicate matches a request that timed out client-side after the payment had already executed. Which change most directly fixes it?<br><br>
+    <span style="color:#16a34a"><b>✓ Answer B:</b> Attach an idempotency key to each payment call so the tool returns the original result for a repeated request.</span><br>
+    <i>Rationale: Retries replay a completed side effect; idempotency makes retry safe. Tuning timeouts/retry counts only makes the race rarer. Batch doesn't fit synchronous side effects. A prompt instruction can't help — the retry happens in the client wrapper, where the model never sees the earlier result.</i>
+  </div>
+  <div style="border-left:4px solid #d97706;padding:14px 16px;margin-bottom:16px;background:#1e1a0e;color:#e8e0c8;border-radius:6px">
+    <b>S6 · D5 Governance — HITL Gate Placement (v1.1)</b><br>
+    An operations agent runs six steps: read request, look up account, draft plan, update contact details, change billing plan (immediate pro-rated charge), send confirmation email. A human gate before every tool call makes requests wait hours. Which revision keeps risk acceptable and removes needless delay?<br><br>
+    <span style="color:#16a34a"><b>✓ Answer B:</b> Gate only the billing-plan change; let the rest run, constrain the email to the address on file, and rely on the audit log to reverse a wrong contact update.</span><br>
+    <i>Rationale: Reversibility and stakes decide gate placement. Post-execution review can't undo a charge. Gating the plan still delays everything and execution can diverge from it. Self-reported confidence is not a reliable gate for an irreversible step.</i>
   </div>
 </div>
 
